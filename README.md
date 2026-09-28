@@ -21,7 +21,7 @@ Studioは `http://127.0.0.1:4766/` で開きます。Astroへの埋め込み例�
 
 ## HTMLに組み込む
 
-`npm install somen` で導入し、ブラウザー側のスクリプトでカスタム要素を登録すると、HTMLで図を定義できます。
+`npm install somen@alpha` で導入し、ブラウザー側のスクリプトでカスタム要素を登録すると、HTMLで図を定義できます。
 
 ```js
 import 'somen/register';

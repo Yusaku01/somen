@@ -9,7 +9,7 @@ This is an alpha release under the MIT license.
 Install Somen in the project that will use it:
 
 ```sh
-npm install somen
+npm install somen@alpha
 ```
 
 The CLI requires Node.js 22 or later. Bare `somen` imports in a browser page require a bundler or import map; `somen export` creates a page with relative module paths when neither is available.

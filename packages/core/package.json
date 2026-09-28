@@ -21,7 +21,7 @@
     }
   },
   "bin": {
-    "somen": "./cli/index.mjs"
+    "somen": "cli/index.mjs"
   },
   "sideEffects": [
     "./dist/register.js"
