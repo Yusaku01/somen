@@ -53,6 +53,8 @@ Somenは、記事やドキュメントに入れる小さな通信図・処理フ
 
 ## 開発
 
+貢献時の検査とリリース手順は[CONTRIBUTING.md](CONTRIBUTING.md)、脆弱性の非公開報告先は[SECURITY.md](SECURITY.md)を参照してください。
+
 ```sh
 pnpm build       # コアをビルド
 pnpm dev         # Astroデモを起動

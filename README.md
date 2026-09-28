@@ -59,6 +59,8 @@ Nodes appear in source order, and the layout changes to a column in narrow space
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution checks and the release process. Report vulnerabilities using the private channel in [SECURITY.md](SECURITY.md).
+
 ```sh
 pnpm build                          # Build the core package
 pnpm dev                            # Start the Astro demo

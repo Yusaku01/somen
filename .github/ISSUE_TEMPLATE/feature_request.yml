@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an improvement to Somen
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What are you trying to show or do?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested behavior
+    validations:
+      required: true
