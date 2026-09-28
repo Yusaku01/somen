@@ -1,7 +1,15 @@
 {
   "name": "somenflow",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "Small, framework-independent animated diagrams built with HTML and native SVG motion.",
+  "keywords": [
+    "withastro",
+    "ui",
+    "web-components",
+    "diagram",
+    "animation",
+    "svg"
+  ],
   "type": "module",
   "license": "MIT",
   "repository": {
