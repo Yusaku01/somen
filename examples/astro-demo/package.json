@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter somen build && node scripts/prepare-demo.mjs && astro dev",
-    "build": "pnpm --filter somen build && node scripts/prepare-demo.mjs && astro build"
+    "dev": "pnpm --filter somenflow build && node scripts/prepare-demo.mjs && astro dev",
+    "build": "pnpm --filter somenflow build && node scripts/prepare-demo.mjs && astro build"
   },
   "dependencies": {
     "@astrojs/mdx": "8.0.2",
     "astro": "7.3.3",
-    "somen": "workspace:*"
+    "somenflow": "workspace:*"
   }
 }

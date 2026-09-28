@@ -9,17 +9,17 @@ This is an alpha release under the MIT license.
 Install Somen in the project that will use it:
 
 ```sh
-npm install somen@alpha
+npm install somenflow@alpha
 ```
 
-The CLI requires Node.js 22 or later. Bare `somen` imports in a browser page require a bundler or import map; `somen export` creates a page with relative module paths when neither is available.
+The CLI requires Node.js 22 or later. Bare `somenflow` imports in a browser page require a bundler or import map; `somen export` creates a page with relative module paths when neither is available.
 
 ## Add a diagram
 
 Register the elements once in a browser-side entry point. In Astro, put the import in a `<script>` tag.
 
 ```js
-import 'somen/register';
+import 'somenflow/register';
 ```
 
 ```html
@@ -44,7 +44,7 @@ if (!entry) throw new Error('Article not found');
 const { Content } = await render(entry);
 ---
 <Content />
-<script>import 'somen/register';</script>
+<script>import 'somenflow/register';</script>
 ```
 
 The repository has working [Markdown](../../examples/astro-demo/src/content/articles/markdown.md), [MDX](../../examples/astro-demo/src/content/articles/mdx.mdx), and [Content Layer JSON](../../examples/astro-demo/src/content/diagrams/request-flow.json) examples. For structured data, validate it with `parseDocument()` and pass `toMarkup()` output to Astro's `set:html` directive, as shown in the [data page](../../examples/astro-demo/src/pages/data.astro). Do not pass untrusted HTML strings directly to `set:html`.

@@ -21,10 +21,10 @@ Studioは `http://127.0.0.1:4766/` で開きます。Astroへの埋め込み例�
 
 ## HTMLに組み込む
 
-`npm install somen@alpha` で導入し、ブラウザー側のスクリプトでカスタム要素を登録すると、HTMLで図を定義できます。
+`npm install somenflow@alpha` で導入し、ブラウザー側のスクリプトでカスタム要素を登録すると、HTMLで図を定義できます。
 
 ```js
-import 'somen/register';
+import 'somenflow/register';
 ```
 
 ```html
@@ -39,7 +39,7 @@ import 'somen/register';
 
 ## Astroの記事やデータに組み込む
 
-Astroの`.md`と`.mdx`には、上と同じカスタム要素を本文に直接記述できます。MDXを使う場合は`@astrojs/mdx`の導入が必要です。図を表示する`.astro`ページまたはレイアウトの`<script>`で、`somen/register`を一度読み込んでください。[Markdown](examples/astro-demo/src/content/articles/markdown.md)と[MDX](examples/astro-demo/src/content/articles/mdx.mdx)の実例は、Content Layer APIのコレクションから[記事ページ](examples/astro-demo/src/pages/content/%5Bid%5D.astro)で表示しています。
+Astroの`.md`と`.mdx`には、上と同じカスタム要素を本文に直接記述できます。MDXを使う場合は`@astrojs/mdx`の導入が必要です。図を表示する`.astro`ページまたはレイアウトの`<script>`で、`somenflow/register`を一度読み込んでください。[Markdown](examples/astro-demo/src/content/articles/markdown.md)と[MDX](examples/astro-demo/src/content/articles/mdx.mdx)の実例は、Content Layer APIのコレクションから[記事ページ](examples/astro-demo/src/pages/content/%5Bid%5D.astro)で表示しています。
 
 JSONなどの構造化データをContent Layer APIで管理する場合は、`getEntry()`で取得したデータを`parseDocument()`で検証し、`toMarkup()`でHTMLに変換できます。[JSONの実例](examples/astro-demo/src/content/diagrams/request-flow.json)と[表示ページ](examples/astro-demo/src/pages/data.astro)も用意しています。Astroの`set:html`はHTMLをそのまま挿入するため、任意のHTML文字列ではなく`toMarkup()`の出力を渡してください。
 
