@@ -1,63 +1,71 @@
 # Somen
 
-Somenは、HTMLでノードと接続を記述して、動きのあるフロー図を表示するWeb Componentです。ノードの配置と接続線の経路は、表示領域とHTML要素の大きさに合わせて計算します。
+English | [日本語](README.ja.md)
 
-現在は開発中のalpha版です。ライセンスはMITです。
+Somen is a Web Component for animated flow diagrams written with HTML nodes and connections. It calculates node positions and connection paths from the available space and the rendered size of each element.
 
-![ブラウザー、API、データベースを結ぶ3ノードの通信フロー。青と緑の粒子が右へ流れるアニメーション](assets/flow-preview.gif)
+Somen is an alpha release under the MIT license.
 
-画像は3ノードの図に絞った動作イメージです。実際の図は一時停止・再生できます。
+![Animated communication flow between a browser, API, and database, with blue and green particles moving between three nodes](assets/flow-preview.gif)
 
-## ローカルで試す
+The preview focuses on one three-node diagram. Visitors can pause and resume a live diagram.
 
-開発環境はNode.js 24.13.0（`.node-version`）とpnpm 12.3.4（`package.json`の`packageManager`）に固定しています。フォームで図を編集するStudioは、次のコマンドで起動できます。
+## Try it locally
+
+Development uses Node.js 24.13.0 from `.node-version` and pnpm 12.3.4 from the root `package.json` `packageManager` field. Start Studio to edit a diagram in a form:
 
 ```sh
 pnpm install
 pnpm studio
 ```
 
-Studioは `http://127.0.0.1:4766/` で開きます。Astroへの埋め込み例を見る場合は、リポジトリのルートで `pnpm dev` を実行してください。
+Studio opens at `http://127.0.0.1:4766/`. To see the Astro examples, run `pnpm dev` at the repository root.
 
-## HTMLに組み込む
+## Embed a diagram in HTML
 
-`npm install somenflow@alpha` で導入し、ブラウザー側のスクリプトでカスタム要素を登録すると、HTMLで図を定義できます。
+Install `somenflow@alpha` and register the custom elements in a browser-side script:
+
+```sh
+npm install somenflow@alpha
+```
 
 ```js
 import 'somenflow/register';
 ```
 
+Then write the diagram in HTML:
+
 ```html
-<flow-diagram label="通信の流れ" autoplay>
-  <flow-node name="client">クライアント</flow-node>
-  <flow-connection label="リクエスト"></flow-connection>
-  <flow-node name="server">サーバー</flow-node>
+<flow-diagram label="Request flow" autoplay>
+  <flow-node name="client">Client</flow-node>
+  <flow-connection label="Request"></flow-connection>
+  <flow-node name="server">Server</flow-node>
 </flow-diagram>
 ```
 
-この例では、接続を二つのノードの間に置くことで接続元と接続先を省略しています。分岐や逆方向の接続では `from` と `to` を指定します。[埋め込み例](examples/astro-demo/src/pages/examples.astro)には、複数ノードと見た目の変更例があります。
+Putting a connection between two nodes lets Somen infer its endpoints. Set `from` and `to` for branches or reverse connections. The [Astro examples](examples/astro-demo/src/pages/examples.astro) show multiple nodes and customized appearance.
 
-## Astroの記事やデータに組み込む
+## Embed a diagram in Astro content
 
-Astroの`.md`と`.mdx`には、上と同じカスタム要素を本文に直接記述できます。MDXを使う場合は`@astrojs/mdx`の導入が必要です。図を表示する`.astro`ページまたはレイアウトの`<script>`で、`somenflow/register`を一度読み込んでください。[Markdown](examples/astro-demo/src/content/articles/markdown.md)と[MDX](examples/astro-demo/src/content/articles/mdx.mdx)の実例は、Content Layer APIのコレクションから[記事ページ](examples/astro-demo/src/pages/content/%5Bid%5D.astro)で表示しています。
+Write the same custom elements directly in `.md` or `.mdx` content. MDX requires the `@astrojs/mdx` integration. Import `somenflow/register` once in a `<script>` in the `.astro` page or layout that renders the content. The demo loads [Markdown](examples/astro-demo/src/content/articles/markdown.md) and [MDX](examples/astro-demo/src/content/articles/mdx.mdx) from a Content Layer API collection and renders them on an [article page](examples/astro-demo/src/pages/content/%5Bid%5D.astro).
 
-JSONなどの構造化データをContent Layer APIで管理する場合は、`getEntry()`で取得したデータを`parseDocument()`で検証し、`toMarkup()`でHTMLに変換できます。[JSONの実例](examples/astro-demo/src/content/diagrams/request-flow.json)と[表示ページ](examples/astro-demo/src/pages/data.astro)も用意しています。Astroの`set:html`はHTMLをそのまま挿入するため、任意のHTML文字列ではなく`toMarkup()`の出力を渡してください。
+For structured data such as JSON, call `getEntry()`, validate the result with `parseDocument()`, and convert it to HTML with `toMarkup()`. See the [JSON entry](examples/astro-demo/src/content/diagrams/request-flow.json) and [data page](examples/astro-demo/src/pages/data.astro). Astro's `set:html` inserts HTML without escaping it, so pass the output of `toMarkup()` rather than an arbitrary HTML string.
 
-## 対応範囲
+## Scope and limitations
 
-Somenは、記事やドキュメントに入れる小さな通信図・処理フローを対象にしています。HTMLのほか、Studioで編集してJSONに保存し、CLIで検証・静的HTMLへの書き出しができます。詳しい要素・属性・CLIの使い方は[パッケージのREADME](packages/core/README.md)を参照してください。
+Somen targets small communication diagrams and process flows in articles and documentation. Studio can save a diagram as JSON, and the CLI can validate it or export a standalone HTML page. See the [package README](packages/core/README.md) for the element API, attributes, and CLI commands.
 
-ノードは記述順に並び、狭い表示領域では縦向きに切り替わります。自動再生は `autoplay` を指定した場合だけ有効です。複雑なグラフの自動配置や、線の完全な交差回避には対応していません。ブラウザー操作はChromiumで確認済みで、Firefox・Safari・支援技術は公開前に確認する予定です。
+Nodes appear in source order, and the layout changes to a column in narrow spaces. Playback starts automatically only when `autoplay` is present. Somen does not lay out complex graphs or guarantee that lines never cross. Browser interaction has been checked in Chromium; Firefox, Safari, and assistive technology have not yet been verified.
 
-## 開発
+## Development
 
 ```sh
-pnpm build       # コアをビルド
-pnpm dev         # Astroデモを起動
-pnpm test        # コアとCLIのテスト
-pnpm code:check  # コアの整形・lint・型を検査
-pnpm code:format # コアを整形
-pnpm unused:check # 未使用ファイル・export・依存を検査
-pnpm docs:check # Markdownとローカルリンクを検査
-pnpm --dir examples/astro-demo build # Astroデモをビルド
+pnpm build                          # Build the core package
+pnpm dev                            # Start the Astro demo
+pnpm test                           # Run core and CLI tests
+pnpm code:check                     # Check formatting, lint, and types
+pnpm code:format                    # Format the core package
+pnpm unused:check                   # Check unused files, exports, and dependencies
+pnpm docs:check                     # Check Markdown and local links
+pnpm --dir examples/astro-demo build # Build the Astro demo
 ```
