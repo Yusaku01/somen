@@ -1,0 +1,13 @@
+{
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD033": { "allowed_elements": ["flow-diagram", "flow-node", "flow-connection"] }
+  },
+  "ignores": [
+    "docs/architecture.md",
+    "docs/verification.md",
+    "**/node_modules/**",
+    "**/dist/**"
+  ]
+}

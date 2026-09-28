@@ -1,0 +1,25 @@
+{
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "build:core": "pnpm --filter somen build",
+    "build": "pnpm build:core",
+    "dev": "pnpm --dir examples/astro-demo dev",
+    "test": "pnpm build:core && vp test",
+    "code:check": "vp check vite.config.ts packages/core/src packages/core/cli packages/core/studio packages/core/test",
+    "code:format": "vp fmt vite.config.ts packages/core/src packages/core/cli packages/core/studio packages/core/test",
+    "unused:check": "fallow dead-code --no-cache",
+    "docs:check": "markdownlint-cli2 \"**/*.md\" && node scripts/check-doc-links.mjs",
+    "prepare": "lefthook install",
+    "studio": "pnpm build:core && node packages/core/cli/index.mjs studio",
+    "somen": "node packages/core/cli/index.mjs"
+  },
+  "devDependencies": {
+    "fallow": "3.30.0",
+    "lefthook": "2.1.14",
+    "markdownlint-cli2": "0.23.3",
+    "typescript": "7.0.2",
+    "vite-plus": "1.0.0-rc.1"
+  }
+}

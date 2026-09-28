@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Somen Studio</title>
+    <link rel="stylesheet" href="./studio.css" />
+    <script type="module" src="./studio.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">SOMEN / STUDIO</p>
+        <h1>つないで、動きを伝える。</h1>
+        <p>箱と接続を編集して、記事やサイトに埋め込む図を作ります。</p>
+      </div>
+      <div class="actions">
+        <button id="undo" disabled>元に戻す</button
+        ><label class="file-button"
+          >開く<input id="open" type="file" accept=".json,application/json" /></label
+        ><button id="save">プロジェクトを保存</button>
+      </div>
+    </header>
+    <main class="workspace">
+      <section class="editor" aria-label="図の編集">
+        <div class="section-heading">
+          <h2>図の設定</h2>
+          <span class="step">01</span>
+        </div>
+        <label>図のタイトル<input id="title" autocomplete="off" /></label>
+        <label
+          >並び方<select id="layout">
+            <option value="auto">幅に合わせて自動</option>
+            <option value="horizontal">横に並べる</option>
+            <option value="vertical">縦に並べる</option>
+          </select></label
+        >
+        <label class="check"><input id="autoplay" type="checkbox" />自動再生する</label>
+        <details class="appearance">
+          <summary>枠・ラベル・ボタンの表示</summary>
+          <label
+            >枠のスタイル<select id="variant">
+              <option value="panel">パネル</option>
+              <option value="plain">枠・背景なし</option>
+            </select></label
+          >
+          <label class="check"
+            ><input type="checkbox" data-appearance="caption" checked />見出しを表示</label
+          >
+          <label class="check"
+            ><input type="checkbox" data-appearance="legend" checked />凡例を表示</label
+          >
+          <label class="check"
+            ><input
+              type="checkbox"
+              data-appearance="controls"
+              checked
+            />再生・停止ボタンを表示</label
+          >
+          <label class="check"
+            ><input type="checkbox" data-appearance="buttonText" checked />ボタンの文字を表示</label
+          >
+          <p class="note">
+            ボタンを隠して自動再生する場合は、埋め込み先に停止する操作を用意してください。
+          </p>
+        </details>
+        <div class="section-heading">
+          <h2>ノード</h2>
+          <span class="step">02</span>
+        </div>
+        <div id="nodes"></div>
+        <button id="add-node" class="add">＋ ノードを追加</button>
+        <div class="section-heading">
+          <h2>接続</h2>
+          <span class="step">03</span>
+        </div>
+        <div id="connections"></div>
+        <button id="add-connection" class="add">＋ 接続を追加</button>
+      </section>
+      <section class="result" aria-label="プレビューと書き出し">
+        <div class="preview-header">
+          <h2>プレビュー</h2>
+          <div class="segmented" aria-label="表示幅">
+            <button data-preview="wide" aria-pressed="true">通常</button
+            ><button data-preview="narrow" aria-pressed="false">スマートフォン</button>
+          </div>
+        </div>
+        <p id="error" class="error" role="alert" hidden></p>
+        <div class="preview-canvas"><div id="preview"></div></div>
+        <section class="export">
+          <div class="section-heading">
+            <h2>サイトに埋め込む</h2>
+            <button id="copy">HTMLをコピー</button>
+          </div>
+          <p>
+            プロジェクトで一度
+            <code>import 'somen/register'</code> を読み込み、下のHTMLを配置します。
+          </p>
+          <label class="visually-hidden" for="markup">埋め込みHTML</label
+          ><textarea id="markup" readonly spellcheck="false"></textarea>
+        </section>
+        <p id="status" role="status"></p>
+        <p class="note">
+          作業内容はこのタブの中にあります。閉じる前に「プロジェクトを保存」で残せます。
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

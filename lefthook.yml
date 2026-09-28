@@ -1,0 +1,8 @@
+pre-commit:
+  jobs:
+    - name: core-code
+      run: pnpm code:check
+    - name: unused
+      run: pnpm unused:check
+    - name: docs
+      run: pnpm docs:check

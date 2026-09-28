@@ -1,0 +1,14 @@
+node_modules/
+.fallow/
+docs/architecture.md
+docs/verification.md
+docs/screenshots/studio.jpg
+docs/screenshots/appearance-examples.jpg
+packages/core/dist/
+examples/astro-demo/dist/
+examples/astro-demo/.astro/
+examples/astro-demo/public/runtime/
+examples/astro-demo/public/studio/
+*.tgz
+*.tsbuildinfo
+.DS_Store

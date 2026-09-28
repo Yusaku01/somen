@@ -1,0 +1,37 @@
+<html lang="ja">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>カスタマイズされた図 — Somen</title></head>
+  <body><main><a href="/">← シンプルな図に戻る</a><h1>カスタマイズされた図</h1>
+    <flow-diagram class="light" label="ブラウザーからデータベースへ" autoplay>
+      <span slot="pause-label">停止する</span><span slot="play-label">動かす</span>
+      <flow-node name="browser"><strong>ブラウザー</strong></flow-node>
+      <flow-connection label="HTTP" color="#2563eb"></flow-connection>
+      <flow-node name="api">API</flow-node>
+      <flow-connection label="クエリ" color="#047857" shape="diamond"></flow-connection>
+      <flow-node name="db">データベース</flow-node>
+    </flow-diagram>
+    <h2>本文に直接置く</h2>
+    <p>枠・見出し・凡例・ボタンを隠した静止図。接続の説明は読み上げ用テキストにも残ります。</p>
+    <flow-diagram class="inline" label="入力から出力への変換" variant="plain" caption="hidden" legend="hidden" controls="hidden">
+      <flow-node name="input">入力</flow-node>
+      <flow-connection label="変換" color="#c4b5fd"></flow-connection>
+      <flow-node name="output">出力</flow-node>
+    </flow-diagram>
+    <flow-diagram label="縦型の静止図" layout="vertical" button-text="hidden">
+      <span slot="caption">本文に合わせた見出し</span>
+      <span slot="pause-label">一時停止</span><span slot="play-label">再生</span>
+      <flow-node name="start">入力</flow-node><flow-node name="end">出力</flow-node>
+      <flow-connection from="start" to="end" label="変換" color="#f7bc79"></flow-connection>
+      <p slot="legend">凡例も通常のHTMLで差し替えられます。矢印は変換の方向です。</p>
+    </flow-diagram>
+  </main></body>
+</html>
+<script>import 'somen/register';</script>
+<style>
+  :global(body){margin:0;font-family:system-ui,sans-serif;background:#000;color:#fff;line-height:1.6}
+  main{box-sizing:border-box;width:min(100%,768px);margin:2rem auto;padding:1rem}a{color:#a5c9ff}flow-diagram{display:block;margin:2rem 0}flow-node:not(:defined){display:block;padding:1rem}flow-connection:not(:defined){display:none}
+  .light{--flow-background:#f8fafc;--flow-toolbar:#eff4f9;--flow-stage-background:#f8fafc;--flow-grid:rgba(23,32,51,.16);--flow-rail:#334155;--flow-text:#172033;--flow-border:#cbd5e1;--flow-node-background:#fff;--flow-node-border:#cbd5e1;--flow-node-radius:.3rem;--flow-radius:.3rem}
+  .light::part(rail){stroke-width:2}p[slot=legend]{margin:0}
+  .light{--flow-caption-color:#1d4ed8;--flow-control-background:#2563eb;--flow-control-color:#fff;--flow-control-border:#2563eb;--flow-control-hover:#1d4ed8;--flow-control-radius:999px;--flow-legend-background:#eff4f9;--flow-legend-color:#334155}
+  .light::part(legend-label){font-weight:600}
+  .inline{--flow-node-background:#312e81;--flow-node-border:transparent;--flow-node-radius:999px}
+</style>

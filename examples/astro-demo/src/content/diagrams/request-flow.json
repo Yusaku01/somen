@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "label": "Content Layer API の通信図",
+  "autoplay": true,
+  "nodes": [
+    { "id": "client", "label": "クライアント" },
+    { "id": "server", "label": "サーバー" }
+  ],
+  "connections": [
+    { "id": "request", "from": "client", "to": "server", "label": "リクエスト" }
+  ]
+}

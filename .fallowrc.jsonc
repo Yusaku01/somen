@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "ignoreUnresolvedImports": [
+    // Studio loads these modules from the generated /runtime/ directory.
+    "../runtime/register.js",
+    "../runtime/model.js"
+  ]
+}

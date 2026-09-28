@@ -1,0 +1,32 @@
+---
+import { getEntry } from 'astro:content';
+import { toMarkup, parseDocument } from 'somen';
+
+const entry = await getEntry('diagrams', 'request-flow');
+if (!entry) throw new Error('The request-flow diagram is missing.');
+const markup = toMarkup(parseDocument(entry.data));
+---
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>データから埋め込む — Somen</title>
+  </head>
+  <body>
+    <main>
+      <a href="/">← シンプルな図に戻る</a>
+      <h1>データから埋め込む</h1>
+      <div set:html={markup} />
+    </main>
+  </body>
+</html>
+<script>import 'somen/register';</script>
+<style>
+  :global(body) { margin:0; background:#000; color:#fff; font-family:system-ui,sans-serif; line-height:1.6; }
+  main { box-sizing:border-box; width:min(100%,768px); margin:2rem auto; padding:1rem; }
+  a { color:#a5c9ff; }
+  h1 { margin:2rem 0; }
+  :global(flow-diagram) { display:block; margin:2rem 0; }
+  :global(flow-node:not(:defined)) { display:block; padding:1rem; }
+  :global(flow-connection:not(:defined)) { display:none; }
+</style>

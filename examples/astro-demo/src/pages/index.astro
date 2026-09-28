@@ -1,0 +1,36 @@
+---
+import { exampleDocument, toMarkup } from 'somen';
+const markup = toMarkup(exampleDocument);
+---
+<html lang="ja">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>シンプルな図 — Somen</title></head>
+  <body>
+    <main>
+      <nav><span>SOMEN</span><a href="/studio/index.html">Studioで編集 ↗</a></nav>
+      <h1>シンプルな図</h1>
+      <flow-diagram label="クライアントとサーバーの通信" autoplay>
+        <span slot="caption">クライアントとサーバーの通信</span>
+        <span slot="pause-label">一時停止</span>
+        <span slot="play-label">再生</span>
+        <flow-node name="client">クライアント</flow-node>
+        <flow-connection name="request" label="リクエスト" color="#70a0ff" shape="square"></flow-connection>
+        <flow-node name="server">サーバー</flow-node>
+        <flow-connection name="response" from="server" to="client" label="レスポンス" color="#9ae8c5" shape="circle"></flow-connection>
+      </flow-diagram>
+      <section class="code-example" aria-labelledby="diagram-code-heading">
+        <h2 id="diagram-code-heading">▼図のコード</h2>
+        <pre><code>{markup}</code></pre>
+      </section>
+      <p class="links"><a href="/examples/">カスタマイズされた図を見る →</a></p>
+    </main>
+  </body>
+</html>
+<script>import 'somen/register';</script>
+<style>
+  :global(body){margin:0;font-family:system-ui,sans-serif;color:#fff;background:#000;line-height:1.6}
+  main{box-sizing:border-box;width:min(100%,768px);min-width:0;margin:clamp(2rem,8vh,5rem) auto;padding:clamp(1rem,4vw,1.5rem)}
+  nav{display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.8rem;margin-bottom:2rem}nav span{letter-spacing:.15em;color:#94a3b8}
+  a{color:#a5c9ff}h1{font-size:clamp(1.75rem,5vw,2rem);overflow-wrap:anywhere}
+  flow-diagram{display:block;margin:1.5rem 0}flow-node:not(:defined){display:block;padding:1rem}flow-connection:not(:defined){display:none}
+  .code-example{margin-top:2rem;font-size:.85rem}.code-example h2{margin:0;font-size:1rem}pre{padding:1rem;border:1px solid #333;border-radius:.25rem;overflow:auto;background:#0b0b0b;font-size:.75rem}.links{font-size:.85rem}
+</style>
