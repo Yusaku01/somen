@@ -1,9 +1,18 @@
 {
   "name": "somenflow",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Small, framework-independent animated diagrams built with HTML and native SVG motion.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yusaku01/somen.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/Yusaku01/somen#readme",
+  "bugs": {
+    "url": "https://github.com/Yusaku01/somen/issues"
+  },
   "files": [
     "dist",
     "cli",

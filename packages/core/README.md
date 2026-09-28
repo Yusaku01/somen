@@ -1,5 +1,7 @@
 # Somen
 
+[Source on GitHub](https://github.com/Yusaku01/somen) · [日本語](https://github.com/Yusaku01/somen/blob/main/README.ja.md)
+
 Somen displays animated flow diagrams from HTML nodes and connections. It uses Web Components and native SVG motion, with no runtime dependencies. The layout adapts to the diagram's width.
 
 This is an alpha release under the MIT license.
@@ -47,7 +49,7 @@ const { Content } = await render(entry);
 <script>import 'somenflow/register';</script>
 ```
 
-The repository has working [Markdown](../../examples/astro-demo/src/content/articles/markdown.md), [MDX](../../examples/astro-demo/src/content/articles/mdx.mdx), and [Content Layer JSON](../../examples/astro-demo/src/content/diagrams/request-flow.json) examples. For structured data, validate it with `parseDocument()` and pass `toMarkup()` output to Astro's `set:html` directive, as shown in the [data page](../../examples/astro-demo/src/pages/data.astro). Do not pass untrusted HTML strings directly to `set:html`.
+The repository has working [Markdown](https://github.com/Yusaku01/somen/blob/main/examples/astro-demo/src/content/articles/markdown.md), [MDX](https://github.com/Yusaku01/somen/blob/main/examples/astro-demo/src/content/articles/mdx.mdx), and [Content Layer JSON](https://github.com/Yusaku01/somen/blob/main/examples/astro-demo/src/content/diagrams/request-flow.json) examples. For structured data, validate it with `parseDocument()` and pass `toMarkup()` output to Astro's `set:html` directive, as shown in the [data page](https://github.com/Yusaku01/somen/blob/main/examples/astro-demo/src/pages/data.astro). Do not pass untrusted HTML strings directly to `set:html`.
 
 ## Edit and export
 
