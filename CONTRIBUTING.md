@@ -11,6 +11,8 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+Use `pnpm build` to build the core package and `pnpm code:format` to format its source files.
+
 Keep framework-independent code in `packages/core` and Astro-specific examples in `examples/astro-demo`. Add or update documentation when changing the public API.
 
 Before opening a pull request, run:
