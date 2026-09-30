@@ -25,6 +25,15 @@ pnpm docs:check
 pnpm --dir examples/astro-demo build
 ```
 
+Run the Chromium integration test separately. Install the browser once before the first run:
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:browser
+```
+
+CI runs this test as well. Git hooks keep their existing checks and do not launch a browser.
+
 ## Releases
 
 Maintainers update the version in `packages/core/package.json` and commit it to `main`. Pushing a tag named `v` followed by that exact version starts the release workflow. It runs the checks, publishes `somenflow` to npm using Trusted Publishing, and creates a GitHub Release after publication succeeds. Prerelease versions use their prerelease identifier as the npm dist-tag; stable versions use `latest`.

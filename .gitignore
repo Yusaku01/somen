@@ -11,4 +11,5 @@ examples/astro-demo/public/runtime/
 examples/astro-demo/public/studio/
 *.tgz
 *.tsbuildinfo
+test-results/
 .DS_Store

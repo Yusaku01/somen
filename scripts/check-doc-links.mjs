@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const ignored = new Set(['.git', '.astro', 'dist', 'node_modules', 'public']);
+const ignored = new Set(['.git', '.astro', 'dist', 'node_modules', 'public', 'test-results']);
 const ignoredFiles = new Set(['docs/architecture.md', 'docs/verification.md']);
 const markdownFiles = [];
 
