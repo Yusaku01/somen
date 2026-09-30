@@ -45,7 +45,7 @@ export class FlowValidationError extends Error {
   }
 }
 
-/** Shared by the browser, Studio and CLI. Rejects dangling edges and ambiguous identifiers. */
+/** Shared by the browser and CLI. Rejects dangling edges and ambiguous identifiers. */
 export function parseDocument(input: unknown): FlowDocument {
   if (!record(input)) throw new FlowValidationError(['The diagram must be an object.']);
   const issues: string[] = [];

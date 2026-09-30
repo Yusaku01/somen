@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir, cp, stat } from 'node:fs/promises';
-import { resolve, dirname, extname, join, sep } from 'node:path';
+import { readFile, writeFile, mkdir, cp } from 'node:fs/promises';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:http';
 import { parseDocument, toMarkup, escapeHTML, exampleDocument } from '../dist/model.js';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -24,9 +23,7 @@ const help = `somen — coordinate-free native SVG diagrams
   somen init [diagram.json]             Create a project (never overwrites a file)
   somen validate diagram.json           Validate the shared authoring format
   somen export diagram.json --out DIR [--lang ja]  Create a portable HTML + runtime folder
-  somen studio [--port 4766]            Open the local Studio server
 
-Studio prints a localhost URL. It edits in the browser; it does not write project files.
 Exported folders can be hosted by any static HTTP server. No Astro is needed.
 `;
 
@@ -67,53 +64,6 @@ ${toMarkup(doc)}
 </main></body></html>\n`,
     );
     process.stdout.write(`Exported ${out}/index.html\n`);
-  } else if (command === 'studio') {
-    const port = Number(option('--port', '4766'));
-    if (!Number.isInteger(port) || port < 1 || port > 65535)
-      throw new Error('port must be between 1 and 65535.');
-    const mime = {
-      '.html': 'text/html; charset=utf-8',
-      '.js': 'text/javascript; charset=utf-8',
-      '.css': 'text/css; charset=utf-8',
-      '.json': 'application/json',
-    };
-    const server = createServer(async (request, response) => {
-      try {
-        if (request.method !== 'GET' && request.method !== 'HEAD') {
-          response.writeHead(405).end();
-          return;
-        }
-        const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-        const runtime = pathname.startsWith('/runtime/');
-        const root = join(packageRoot, runtime ? 'dist' : 'studio');
-        const relative = runtime
-          ? pathname.slice('/runtime/'.length)
-          : pathname === '/'
-            ? 'index.html'
-            : pathname.slice(1);
-        const path = resolve(root, relative);
-        if (!path.startsWith(root + sep) || !(await stat(path)).isFile()) {
-          response.writeHead(404).end('Not found');
-          return;
-        }
-        const contents = await readFile(path);
-        response.writeHead(200, {
-          'Content-Type': mime[extname(path)] ?? 'application/octet-stream',
-          'Cache-Control': 'no-store',
-          'X-Content-Type-Options': 'nosniff',
-        });
-        response.end(request.method === 'HEAD' ? undefined : contents);
-      } catch {
-        response.writeHead(404).end('Not found');
-      }
-    });
-    server.on('error', (error) => {
-      process.stderr.write(`${error.message}\n`);
-      process.exitCode = 1;
-    });
-    server.listen(port, '127.0.0.1', () =>
-      process.stdout.write(`Somen Studio: http://127.0.0.1:${port}/\n`),
-    );
   } else throw new Error(`Unknown command: ${command}. Run somen --help.`);
 } catch (error) {
   process.stderr.write(`${error.message}\n`);
