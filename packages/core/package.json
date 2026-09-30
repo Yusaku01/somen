@@ -1,6 +1,6 @@
 {
   "name": "somenflow",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.4",
   "description": "Small, framework-independent animated diagrams built with HTML and native SVG motion.",
   "keywords": [
     "withastro",
