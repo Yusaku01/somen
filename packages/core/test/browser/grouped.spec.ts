@@ -79,8 +79,10 @@ test('groups and decisions retain readable geometry and labels when resized whil
       };
     });
     expect(branches).toEqual({ separate: true, order: true });
+    const screenshot = testInfo.outputPath(`grouped-${width}px.png`);
+    await page.screenshot({ path: screenshot, fullPage: true });
     await testInfo.attach(`grouped-${width}px`, {
-      body: await page.screenshot({ fullPage: true }),
+      path: screenshot,
       contentType: 'image/png',
     });
   }

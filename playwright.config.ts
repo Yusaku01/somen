@@ -3,6 +3,7 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: 'packages/core/test/browser',
   testMatch: '**/*.spec.ts',
+  outputDir: 'test-results',
   forbidOnly: true,
   workers: 1,
   use: {
