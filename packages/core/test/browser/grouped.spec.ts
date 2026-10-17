@@ -190,6 +190,12 @@ test('single-column vertical flows shrink without losing paused paths', async ({
 }, testInfo) => {
   await page.goto('/packages/core/test/browser/fixtures/paused-resize.html');
   const diagram = page.locator('flow-diagram');
+  await diagram
+    .locator('flow-connection')
+    .evaluate((element) =>
+      element.setAttribute('label', 'メインスレッドからWorkerへメッセージを送信'),
+    );
+  await expect(diagram.locator('.stage > svg')).toHaveAttribute('data-ready', '');
   const state = await diagram.evaluateHandle((element) => {
     const flow = element as FlowDiagramElement;
     flow.pause();
@@ -227,6 +233,15 @@ test('single-column vertical flows shrink without losing paused paths', async ({
         .poll(() =>
           diagram.evaluate((element) => {
             const view = element.shadowRoot!.querySelector('.viewport')!.getBoundingClientRect();
+            const label = element.querySelector('flow-connection')!.getBoundingClientRect();
+            return label.left >= view.left - 1 && label.right <= view.right + 1;
+          }),
+        )
+        .toBe(true);
+      await expect
+        .poll(() =>
+          diagram.evaluate((element) => {
+            const view = element.shadowRoot!.querySelector('.viewport')!.getBoundingClientRect();
             return [...element.querySelectorAll('flow-node')].every((node) => {
               const box = node.getBoundingClientRect();
               return box.left >= view.left && box.right <= view.right;
@@ -254,6 +269,34 @@ test('single-column vertical flows shrink without losing paused paths', async ({
       }
     }
   }
+  await diagram.evaluate((element) => {
+    element.style.width = '180px';
+    const reverse = document.createElement('flow-connection');
+    reverse.setAttribute('from', 'server');
+    reverse.setAttribute('to', 'client');
+    reverse.setAttribute('label', 'Workerからメインスレッドへメッセージを返す');
+    element.querySelector('flow-group')!.append(reverse);
+  });
+  await expect
+    .poll(() =>
+      diagram.evaluate((element) => {
+        const view = element.shadowRoot!.querySelector('.viewport')!.getBoundingClientRect();
+        const labels = [...element.querySelectorAll('flow-connection')].map((label) =>
+          label.getBoundingClientRect(),
+        );
+        return (
+          labels.every((label) => label.left >= view.left - 1 && label.right <= view.right + 1) &&
+          (labels[0].right <= labels[1].left || labels[1].right <= labels[0].left)
+        );
+      }),
+    )
+    .toBe(true);
+  const bidirectionalScreenshot = testInfo.outputPath('narrow-linear-bidirectional.png');
+  await diagram.screenshot({ path: bidirectionalScreenshot });
+  await testInfo.attach('narrow-linear-bidirectional', {
+    path: bidirectionalScreenshot,
+    contentType: 'image/png',
+  });
 });
 
 test('node attribute labels remain visible and yield to HTML content', async ({

@@ -382,6 +382,11 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           motions.push(motion);
         }
         const siblings = pairs.get([edge.from, edge.to].sort().join('|'))!;
+        this.setStyle(
+          connections[index]!,
+          '--_flow-label-width',
+          `calc((100% - ${(siblings.length - 1) * 8}px) / ${siblings.length})`,
+        );
         this.rails.push({
           from: edge.from,
           to: edge.to,
