@@ -155,6 +155,36 @@ test('grouped HTML exports the same graph and respects reduced motion', async ({
   expect(same).toBe(true);
 });
 
+test('grouped exports preserve nested peers between ordinary nodes', async ({ page }) => {
+  await page.goto('/packages/core/test/browser/fixtures/grouped.html');
+  const exported = await page.locator('#islands').evaluate(async (element) => {
+    const entry = '/packages/core/dist/index.js';
+    const { toMarkup } = (await import(entry)) as typeof import('../../src/index.js');
+    const doc = {
+      version: 1 as const,
+      label: 'Peer order',
+      groups: [
+        { id: 'outer', label: 'Outer' },
+        { id: 'inner', label: 'Inner', parent: 'outer' },
+      ],
+      nodes: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B', group: 'inner' },
+        { id: 'c', label: 'C' },
+      ],
+      connections: [{ id: 'ac', from: 'a', to: 'c' }],
+    };
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = toMarkup(doc);
+    const copy = wrapper.firstElementChild as FlowDiagramElement;
+    element.after(copy);
+    const json = copy.toJSON();
+    return { nodes: json.nodes.map((node) => node.id), edge: json.connections[0] };
+  });
+  expect(exported.nodes).toEqual(['a', 'b', 'c']);
+  expect(exported.edge).toMatchObject({ id: 'ac', from: 'a', to: 'c' });
+});
+
 test('node attribute labels remain visible and yield to HTML content', async ({
   page,
 }, testInfo) => {

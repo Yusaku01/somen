@@ -257,28 +257,48 @@ export function toMarkup(input: FlowDocument): string {
   ].join('');
   // Place outgoing connections after their source. Only omit endpoints when both
   // match the surrounding nodes; explicit names keep branches and reverse edges clear.
+  const positions = new Map(doc.nodes.map((node, index) => [node.id, index]));
+  const parents = new Map((doc.groups ?? []).map((group) => [group.id, group.parent]));
+  doc.nodes.forEach((node, index) => {
+    let parent = node.group;
+    while (parent) {
+      positions.set(parent, Math.min(positions.get(parent) ?? index, index));
+      parent = parents.get(parent);
+    }
+  });
   const render = (parent?: string, depth = 1): string[] => {
     const indent = '  '.repeat(depth);
     const peers = doc.nodes.filter((node) => node.group === parent);
-    return [
+    const items = [
+      ...peers.map((node) => ({ node, position: positions.get(node.id)! })),
       ...(doc.groups ?? [])
         .filter((group) => group.parent === parent)
-        .flatMap((group) => [
+        .map((group) => ({ group, position: positions.get(group.id)! })),
+    ].sort((a, b) => a.position - b.position);
+    return items.flatMap((item, index) => {
+      if ('group' in item) {
+        const group = item.group;
+        return [
           `${indent}<flow-group name="${e(group.id)}" label="${e(group.label)}"${group.layout ? ` layout="${group.layout}"` : ''}>`,
           ...render(group.id, depth + 1),
           `${indent}</flow-group>`,
-        ]),
-      ...peers.flatMap((node, index) => [
+        ];
+      }
+      const node = item.node;
+      const next = items[index + 1];
+      return [
         `${indent}<flow-node name="${e(node.id)}"${node.shape ? ` shape="${node.shape}"` : ''}>${e(node.label)}</flow-node>`,
         ...doc.connections
           .filter((edge) => edge.from === node.id)
           .map((edge) => {
             const endpoints =
-              edge.to === peers[index + 1]?.id ? '' : ` from="${e(edge.from)}" to="${e(edge.to)}"`;
+              next && 'node' in next && edge.to === next.node.id
+                ? ''
+                : ` from="${e(edge.from)}" to="${e(edge.to)}"`;
             return `${indent}<flow-connection name="${e(edge.id)}"${endpoints} label="${e(edge.label!)}"${edge.labelPosition === undefined ? '' : ` label-position="${edge.labelPosition}"`} color="${edge.color}" shape="${edge.shape}" duration="${edge.duration}"></flow-connection>`;
           }),
-      ]),
-    ];
+      ];
+    });
   };
   return [
     `<flow-diagram label="${e(doc.label)}" layout="${doc.layout}"${doc.autoplay ? ' autoplay' : ''}${attrs}>`,

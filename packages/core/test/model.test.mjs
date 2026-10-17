@@ -132,6 +132,31 @@ test('groups, decisions and optional labels survive normalization and escaped HT
   assert.match(html, /from="condition" to="done" label="" label-position="0.4"/);
 });
 
+test('HTML export interleaves peer groups by first descendant and keeps endpoints explicit', () => {
+  const doc = {
+    version: 1,
+    label: 'Peer ordering',
+    groups: [
+      { id: 'outer', label: 'Outer' },
+      { id: 'inner', label: 'Inner', parent: 'outer' },
+    ],
+    nodes: [
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B', group: 'inner' },
+      { id: 'c', label: 'C' },
+    ],
+    connections: [{ id: 'ac', from: 'a', to: 'c' }],
+  };
+  const html = toMarkup(doc);
+  assert.deepEqual(
+    [...html.matchAll(/<flow-node name="([^"]+)"/g)].map((match) => match[1]),
+    ['a', 'b', 'c'],
+  );
+  assert.ok(html.indexOf('name="a"') < html.indexOf('<flow-group name="outer"'));
+  assert.ok(html.indexOf('<flow-group name="inner"') < html.indexOf('name="b"'));
+  assert.match(html, /name="ac" from="a" to="c"/);
+});
+
 test('invalid group trees, shapes and label positions fail with validation errors', () => {
   const valid = {
     ...exampleDocument,

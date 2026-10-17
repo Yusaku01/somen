@@ -141,7 +141,7 @@ const markup = toMarkup(document);
 
 `jsonText` is the content of a JSON project such as the example above. `parseDocument()` validates it and fills in defaults. Invalid input throws `FlowValidationError`, whose `issues` property lists the validation messages. `toMarkup()` returns custom-element HTML with escaped labels and attributes; register `somenflow/register` in the browser to render it.
 
-Call `toJSON()` on a registered `flow-diagram` element to obtain its project data. Group membership, decision shapes, and connection label positions are preserved. Node, group-title, and connection content becomes text labels; slots, CSS overrides, and rich HTML content are not preserved in JSON. HTML export may reorder connections while retaining their IDs and endpoints.
+Call `toJSON()` on a registered `flow-diagram` element to obtain its project data. Group membership, decision shapes, and connection label positions are preserved. Node, group-title, and connection content becomes text labels; slots, CSS overrides, and rich HTML content are not preserved in JSON. HTML export orders peer groups by their first descendant node and keeps each group's descendants together. Interleaved members of the same group become contiguous. Connections may be reordered while retaining their IDs and endpoints.
 
 ## Accessibility
 
