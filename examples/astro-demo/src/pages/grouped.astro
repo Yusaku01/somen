@@ -1,0 +1,66 @@
+---
+const islands = `<flow-diagram label="PrefetchとIslands architecture" legend="hidden">
+  <span slot="scroll-hint">← 左右にスクロールして全体を表示 →</span>
+  <flow-group name="before" label="Navigationの前">
+    <flow-node name="prefetch">Prefetch</flow-node>
+  </flow-group>
+  <flow-group name="after" label="Navigationの後">
+    <flow-node name="html">Static HTML</flow-node>
+    <flow-node name="client">Client Island</flow-node>
+    <flow-node name="server">Server Island</flow-node>
+    <flow-connection from="html" to="client"></flow-connection>
+    <flow-connection from="html" to="server"></flow-connection>
+  </flow-group>
+  <flow-connection from="prefetch" to="html"></flow-connection>
+</flow-diagram>`;
+const decision = `<flow-diagram label="Web Workerを使用するかどうかの判断基準" layout="vertical" legend="hidden">
+  <span slot="scroll-hint">← 左右にスクロールして全体を表示 →</span>
+  <flow-node name="freeze" shape="decision">処理中にUIが固まるか</flow-node>
+  <flow-node name="normal">まず通常のJavaScriptでよい</flow-node>
+  <flow-node name="dom" shape="decision">DOM操作が必要か</flow-node>
+  <flow-node name="split">計算部分だけWorkerへ分離</flow-node>
+  <flow-node name="worker">Web Workerの有力候補</flow-node>
+  <flow-connection from="freeze" to="normal" label="いいえ"></flow-connection>
+  <flow-connection from="freeze" to="dom" label="はい"></flow-connection>
+  <flow-connection from="dom" to="split" label="はい"></flow-connection>
+  <flow-connection from="dom" to="worker" label="いいえ"></flow-connection>
+</flow-diagram>`;
+const steps = `<flow-diagram label="Prefetchの処理手順" legend="hidden">
+  <flow-node name="hover">リンクに触れる</flow-node>
+  <flow-connection></flow-connection>
+  <flow-node name="prefetch">Prefetchが走る</flow-node>
+  <flow-connection></flow-connection>
+  <flow-node name="load">次のページを先読み</flow-node>
+  <flow-connection></flow-connection>
+  <flow-node name="show">クリック時に表示</flow-node>
+</flow-diagram>`;
+const examples = [
+  { id:'islands', title:'グループで処理の範囲を示す', description:'Navigationの前後を囲みで分け、Static HTMLの先をClient IslandとServer Islandへ分岐します。', markup:islands },
+  { id:'decision', title:'条件をたどる判断フロー', description:'ひし形の問いから、線上の「はい」「いいえ」をたどれます。左右の分岐が収まらない画面では、図の中を横にスクロールできます。', markup:decision },
+  { id:'steps', title:'単純な手順は、短く書く', description:'隣り合うノードの間に接続を置けば、接続先とラベルを省略できます。', markup:steps },
+];
+---
+<!doctype html>
+<html lang="ja">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>グループと判断フロー — Somen</title></head>
+  <body><main>
+    <nav><a href="/">SOMEN</a><a href="/examples/">カスタマイズ例</a></nav>
+    <header><p class="eyebrow">GROUPS & DECISIONS · 開発中</p><h1>範囲を囲む。条件をたどる。</h1><p>HTMLで書く、小さなグループ図と判断フロー。座標を指定せず、接続関係から配置します。</p></header>
+    {examples.map((example, index) => <section id={example.id}>
+      <p class="number">0{index + 1}</p><h2>{example.title}</h2><p>{example.description}</p>
+      <div set:html={example.markup} />
+      <details><summary>この図のHTMLを見る</summary><pre><code>{example.markup}</code></pre></details>
+    </section>)}
+    <footer>参照：<a href="https://saku-space.com/blog/astro-island-prefetch/">Astro PrefetchとIslands architecture</a> / <a href="https://saku-space.com/blog/web-worker-basics/">Web Workerの仕組みと使いどころ</a></footer>
+  </main></body>
+</html>
+<script>import 'somenflow/register';</script>
+<style>
+  :global(body){margin:0;font-family:system-ui,sans-serif;background:#080a0e;color:#f1f5f9;line-height:1.7}
+  main{box-sizing:border-box;max-width:1060px;margin:auto;padding:clamp(1rem,4vw,3rem)}
+  nav{display:flex;justify-content:space-between;gap:1rem;font-size:.85rem}nav a:first-child{letter-spacing:.15em;text-decoration:none;color:inherit}
+  a{color:#a5c9ff}header{margin:4rem 0}h1{font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.3;letter-spacing:-.03em}h2{margin:.25rem 0;font-size:clamp(1.2rem,3vw,1.5rem)}
+  p{max-width:50rem;color:#aebbcf}.eyebrow,.number{font-size:.75rem;letter-spacing:.12em;color:#9ab8e8}.number{margin:0}section{margin:4rem 0 5rem}
+  :global(flow-diagram){display:block;margin:1.5rem 0}details{font-size:.85rem}summary{cursor:pointer;color:#bac9df;padding:.5rem 0}
+  pre{overflow:auto;padding:1rem;background:#10151e;border:1px solid #303947;font-size:.75rem;line-height:1.7}footer{border-top:1px solid #303947;padding:2rem 0;font-size:.8rem;color:#aebbcf}
+</style>
