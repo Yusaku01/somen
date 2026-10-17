@@ -31,6 +31,12 @@ PRをマージするたびには公開しない。利用者に届ける機能・
 
 alpha期間は `0.1.0-alpha.N` を継続し、npmの `alpha` に公開する。安定版へ移す判断は別途行い、alphaの公開で `latest` を動かさない。GitHubもprereleaseとして扱う。beta・rcも同様に専用チャンネルを使う。
 
+## GitHub側の前提
+
+`v*` タグの作成は所有者とGitHub Actionsに許可し、更新・削除の例外は所有者だけに限定する。作成と更新・削除を別のrulesetに分け、公開ジョブにタグの付け替え権限を与えない。mainのレビュー・CI保護は継続する。
+
+npm Trusted Publisherはこのリポジトリの `release.yml` を使う。公開権限とOIDCはpublishジョブだけに持たせる。
+
 ## 失敗時の再実行
 
 タグを作る前に検証を済ませる。GitHubのトークンで作ったタグは別workflowを起動しないため、同じReleaseジョブ内で公開まで実行する。
