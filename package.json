@@ -8,12 +8,13 @@
     "dev": "pnpm --dir examples/astro-demo dev",
     "test": "pnpm build:core && vp test",
     "test:browser": "pnpm build:core && playwright test",
-    "code:check": "vp check vite.config.ts playwright.config.ts packages/core/src packages/core/cli packages/core/test",
-    "code:format": "vp fmt vite.config.ts playwright.config.ts packages/core/src packages/core/cli packages/core/test",
+    "code:check": "vp check vite.config.ts playwright.config.ts packages/core/src packages/core/cli packages/core/test .github/scripts",
+    "code:format": "vp fmt vite.config.ts playwright.config.ts packages/core/src packages/core/cli packages/core/test .github/scripts",
     "unused:check": "fallow dead-code --no-cache",
     "docs:check": "markdownlint-cli2 \"**/*.md\" && node scripts/check-doc-links.mjs",
     "prepare": "lefthook install",
-    "somen": "node packages/core/cli/index.mjs"
+    "somen": "node packages/core/cli/index.mjs",
+    "test:automation": "node --test .github/scripts/*.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
