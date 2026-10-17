@@ -33,7 +33,9 @@ alpha期間は `0.1.0-alpha.N` を継続し、npmの `alpha` に公開する。�
 
 ## GitHub側の前提
 
-`v*` タグの作成は所有者とGitHub Actionsに許可し、更新・削除の例外は所有者だけに限定する。作成と更新・削除を別のrulesetに分け、公開ジョブにタグの付け替え権限を与えない。mainのレビュー・CI保護は継続する。
+この個人リポジトリではGitHub Actionsをタグ作成ルールの例外に登録できないため、新しい `v*` タグは通常のリポジトリwrite権限で作成できる設定にする。`Protect release tags` の更新・削除制限と所有者だけの例外は維持し、Actionsには公開済みタグの付け替え・削除を許可しない。mainのレビュー・CI保護も継続する。
+
+write権限を持つ共同開発者やworkflowも新規タグを作成できる点に注意する。workflowの権限は原則readとし、公開ジョブだけにcontents:writeを付ける。タグを作成しても、公開ジョブがmainの履歴、バージョン、利用者向け変更、CI・CodeQLを検証するため、任意のPRコミットは公開しない。
 
 npm Trusted Publisherはこのリポジトリの `release.yml` を使う。公開権限とOIDCはpublishジョブだけに持たせる。
 
