@@ -1,0 +1,45 @@
+name: Trivial prose auto-approval
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review, converted_to_draft, labeled, unlabeled]
+  workflow_run:
+    workflows: [CI, CodeQL]
+    types: [completed]
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+    inputs:
+      pull_number:
+        description: Pull request number (empty checks all open PRs)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trivial-prose-auto-approval
+  cancel-in-progress: false
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          REQUESTED_NUMBER: ${{ inputs.pull_number }}
+        with:
+          script: |
+            const { runAutoApproval } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/auto-approval.mjs`);
+            await runAutoApproval({ github, context, core }, process.env.REQUESTED_NUMBER);
