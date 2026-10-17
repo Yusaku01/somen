@@ -7,7 +7,7 @@ test('resizing a paused diagram keeps its time and moves the particle onto the n
   await page.goto('/packages/core/test/browser/fixtures/paused-resize.html');
   const diagram = page.locator('flow-diagram');
   await expect(diagram.locator('[part=stage]')).toHaveAttribute('data-layout', 'horizontal');
-  await expect(diagram.locator('svg')).toHaveAttribute('data-ready', '');
+  await expect(diagram.locator('.stage > svg')).toHaveAttribute('data-ready', '');
 
   const elements = await diagram.evaluateHandle((element) => {
     const diagram = element as FlowDiagramElement;

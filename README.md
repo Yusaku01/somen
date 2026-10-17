@@ -34,9 +34,11 @@ Then write the diagram in HTML:
 
 A connection between two nodes infers its endpoints. Set `from` and `to` for branches or reverse connections. Browser imports using the package name require a bundler or import map.
 
+Groups use `<flow-group name="phase" label="Phase">…</flow-group>`; decision nodes use `shape="decision"`. Connection labels appear on their lines and can be omitted. See [groups and decisions](docs/api.md#groups-and-decisions) and the [development demo](examples/astro-demo/src/pages/grouped.astro).
+
 ## Scope and limitations
 
-Somen targets small communication diagrams and process flows in articles and documentation. Nodes appear in source order; the default layout changes to a column in narrow spaces. The CLI validates JSON projects and exports standalone HTML pages.
+Somen targets small communication diagrams and process flows in articles and documentation. Connections determine layers, and branches keep source order within each layer. The default layout changes to a vertical direction in narrow spaces; wide branches scroll within the diagram. The CLI validates JSON projects and exports standalone HTML pages.
 
 Playback starts automatically only with `autoplay`, and a reduced-motion preference prevents initial playback. Visitors can pause and resume a diagram. Without JavaScript, node text remains readable, but connections are not rendered.
 

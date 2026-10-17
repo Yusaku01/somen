@@ -106,3 +106,103 @@ test('routing anchors forward and reverse connections to the facing edges', () =
   assert.equal(connectionPath(a, below, true), 'M96 84 C96 112 96 112 96 140');
   assert.match(connectionPath(a, b, false, 0, true), /^M96 24 V8 H296 V24$/);
 });
+
+test('groups, decisions and optional labels survive normalization and escaped HTML export', () => {
+  const doc = {
+    version: 1,
+    label: 'Grouped flow',
+    groups: [
+      { id: 'browser', label: 'Browser <window>' },
+      { id: 'renderer', label: 'Renderer', parent: 'browser', layout: 'vertical' },
+    ],
+    nodes: [
+      { id: 'condition', label: 'Ready?', group: 'renderer', shape: 'decision' },
+      { id: 'done', label: 'Done', group: 'browser' },
+    ],
+    connections: [{ id: 'yes', from: 'condition', to: 'done', labelPosition: 0.4 }],
+  };
+  const normalized = parseDocument(doc);
+  assert.deepEqual(normalized.groups, doc.groups);
+  assert.deepEqual(normalized.nodes, doc.nodes);
+  assert.equal(normalized.connections[0].label, '');
+  const html = toMarkup(doc);
+  assert.match(html, /<flow-group name="browser" label="Browser &lt;window&gt;">/);
+  assert.match(html, /<flow-group name="renderer" label="Renderer" layout="vertical">/);
+  assert.match(html, /<flow-node name="condition" shape="decision">Ready\?<\/flow-node>/);
+  assert.match(html, /from="condition" to="done" label="" label-position="0.4"/);
+});
+
+test('invalid group trees, shapes and label positions fail with validation errors', () => {
+  const valid = {
+    ...exampleDocument,
+    groups: [{ id: 'container', label: 'Container' }],
+    nodes: exampleDocument.nodes.map((node) => ({ ...node, group: 'container' })),
+  };
+  for (const edit of [
+    (doc) => {
+      doc.groups = [null];
+    },
+    (doc) => {
+      doc.groups[0].parent = 'missing';
+    },
+    (doc) => {
+      doc.groups[0].parent = 'container';
+    },
+    (doc) => {
+      doc.groups.push({ id: 'nested', label: 'Nested', parent: 'container' });
+      doc.groups[0].parent = 'nested';
+    },
+    (doc) => {
+      doc.groups.push({ ...doc.groups[0] });
+    },
+    (doc) => {
+      doc.groups[0].id = 'client';
+    },
+    (doc) => {
+      doc.groups.push({ id: 'empty', label: 'Empty' });
+    },
+    (doc) => {
+      doc.nodes[0].group = 'missing';
+    },
+    (doc) => {
+      doc.nodes[0].shape = 'unknown';
+    },
+    (doc) => {
+      doc.connections[0].labelPosition = NaN;
+    },
+    (doc) => {
+      doc.connections[0].labelPosition = 1.1;
+    },
+  ]) {
+    const doc = structuredClone(valid);
+    edit(doc);
+    assert.throws(() => parseDocument(doc), FlowValidationError);
+  }
+});
+
+test('graph layers preserve branching, reconvergence and finite ordering for cycles', async () => {
+  const { rankItems } = await import('../dist/layout.js');
+  assert.deepEqual(
+    rankItems(
+      ['a', 'b', 'c', 'd'],
+      [
+        { from: 'a', to: 'b' },
+        { from: 'a', to: 'c' },
+        { from: 'b', to: 'd' },
+        { from: 'c', to: 'd' },
+      ],
+    ),
+    [['a'], ['b', 'c'], ['d']],
+  );
+  assert.deepEqual(
+    rankItems(
+      ['a', 'b', 'c'],
+      [
+        { from: 'a', to: 'b' },
+        { from: 'b', to: 'a' },
+        { from: 'b', to: 'c' },
+      ],
+    ),
+    [['a'], ['b'], ['c']],
+  );
+});

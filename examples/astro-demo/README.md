@@ -57,3 +57,5 @@ pnpm --dir examples/astro-demo build
 ```
 
 The [examples page](src/pages/examples.astro) shows branches, reverse connections, and appearance customization.
+
+The [grouped-flow demo](src/pages/grouped.astro), served at `/grouped/`, shows navigation groups, Worker decisions with inline condition labels, and a linear flow with unlabeled connections. It is a development preview of the grouped-flow roadmap.

@@ -30,7 +30,9 @@ import 'somenflow/register';
 </flow-diagram>
 ```
 
-A connection between two nodes infers its endpoints. Set `from` and `to` for branches or reverse connections. Nodes appear in source order; the default layout changes to a column when space is limited.
+A connection between two nodes infers its endpoints. Set `from` and `to` for branches or reverse connections. Connections determine layers, with branches in source order within each layer. The default direction becomes vertical when space is limited; wide branches scroll within the diagram.
+
+Wrap related nodes in `<flow-group name="phase" label="Phase">…</flow-group>` and use `shape="decision"` on a decision node. Connection labels appear on the lines and can be omitted. See the [groups and decisions reference](https://github.com/Yusaku01/somen/blob/main/docs/api.md#groups-and-decisions).
 
 ## Edit and export
 
@@ -46,7 +48,7 @@ Serve the exported folder over HTTP. It contains `index.html` and the runtime mo
 
 ## Scope and limitations
 
-Somen targets small ordered flows. It does not automatically lay out complex graphs or guarantee that lines never cross. Without JavaScript, node text remains readable, but connections are not rendered.
+Somen targets small communication diagrams, grouped flows, and decisions. It does not automatically lay out complex graphs or guarantee that lines never cross. Without JavaScript, node text remains readable, but connections are not rendered.
 
 Playback starts automatically only with `autoplay`, and a reduced-motion preference prevents initial playback. The built-in control lets visitors pause and resume a diagram. Browser interaction checks cover Chromium; Firefox, Safari, and assistive technology have not yet been verified.
 

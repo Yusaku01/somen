@@ -8,6 +8,8 @@ export {
 export type {
   FlowDocument,
   FlowNode,
+  FlowGroup,
+  NodeShape,
   FlowConnection,
   FlowAppearance,
   Layout,

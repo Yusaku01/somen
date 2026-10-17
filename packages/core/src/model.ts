@@ -1,5 +1,6 @@
 export type Layout = 'auto' | 'horizontal' | 'vertical';
 export type ParticleShape = 'circle' | 'square' | 'diamond';
+export type NodeShape = 'rect' | 'decision';
 export interface FlowAppearance {
   variant?: 'panel' | 'plain';
   caption?: boolean;
@@ -10,12 +11,21 @@ export interface FlowAppearance {
 export interface FlowNode {
   id: string;
   label: string;
+  group?: string;
+  shape?: NodeShape;
+}
+export interface FlowGroup {
+  id: string;
+  label: string;
+  parent?: string;
+  layout?: Layout;
 }
 export interface FlowConnection {
   id: string;
   from: string;
   to: string;
-  label: string;
+  label?: string;
+  labelPosition?: number;
   color?: string;
   shape?: ParticleShape;
   duration?: number;
@@ -28,6 +38,7 @@ export interface FlowDocument {
   autoplay?: boolean;
   appearance?: FlowAppearance;
   nodes: FlowNode[];
+  groups?: FlowGroup[];
   connections: FlowConnection[];
 }
 
@@ -71,6 +82,45 @@ export function parseDocument(input: unknown): FlowDocument {
       issues.push(`appearance.${key} must be a boolean.`);
   }
   const nodes = Array.isArray(input.nodes) ? input.nodes : [];
+  const groups = Array.isArray(input.groups) ? input.groups : [];
+  if (input.groups !== undefined && (!Array.isArray(input.groups) || groups.length > 100))
+    issues.push('groups must be an array with at most 100 entries.');
+  const groupIds = new Set<string>();
+  groups.forEach((group, index) => {
+    const at = `groups[${index}]`;
+    if (!record(group)) {
+      issues.push(`${at} must be an object.`);
+      return;
+    }
+    if (typeof group.id !== 'string' || !identifier.test(group.id))
+      issues.push(`${at}.id is invalid.`);
+    else if (groupIds.has(group.id)) issues.push(`Duplicate group id: ${group.id}.`);
+    else groupIds.add(group.id);
+    if (!nonempty(group.label)) issues.push(`${at}.label is required.`);
+    if (
+      group.layout !== undefined &&
+      !['auto', 'horizontal', 'vertical'].includes(group.layout as string)
+    )
+      issues.push(`${at}.layout must be auto, horizontal or vertical.`);
+  });
+  groups.forEach((group, index) => {
+    if (!record(group)) return;
+    if (
+      group.parent !== undefined &&
+      (typeof group.parent !== 'string' || !groupIds.has(group.parent))
+    )
+      issues.push(`groups[${index}].parent refers to a missing group.`);
+    const visited = new Set<unknown>([group.id]);
+    let parent = group.parent;
+    while (typeof parent === 'string' && groupIds.has(parent)) {
+      if (visited.has(parent)) {
+        issues.push(`groups[${index}]: group nesting must not contain cycles.`);
+        break;
+      }
+      visited.add(parent);
+      parent = groups.find((candidate) => record(candidate) && candidate.id === parent)?.parent;
+    }
+  });
   const connections = Array.isArray(input.connections) ? input.connections : [];
   if (!nodes.length || nodes.length > 100) issues.push('Use between 1 and 100 nodes.');
   if (!Array.isArray(input.connections) || connections.length > 300)
@@ -85,7 +135,21 @@ export function parseDocument(input: unknown): FlowDocument {
       issues.push(`nodes[${index}].id must start with a letter and use letters, numbers, _ or -.`);
     else if (ids.has(node.id)) issues.push(`Duplicate node id: ${node.id}.`);
     else ids.add(node.id);
+    if (typeof node.id === 'string' && groupIds.has(node.id))
+      issues.push(`Node and group ids must differ: ${node.id}.`);
     if (!nonempty(node.label)) issues.push(`nodes[${index}].label is required.`);
+    if (node.group !== undefined && (typeof node.group !== 'string' || !groupIds.has(node.group)))
+      issues.push(`nodes[${index}].group refers to a missing group.`);
+    if (node.shape !== undefined && !['rect', 'decision'].includes(node.shape as string))
+      issues.push(`nodes[${index}].shape must be rect or decision.`);
+  });
+  groups.forEach((group, index) => {
+    if (
+      record(group) &&
+      !nodes.some((node) => record(node) && node.group === group.id) &&
+      !groups.some((child) => record(child) && child.parent === group.id)
+    )
+      issues.push(`groups[${index}] must contain a node or group.`);
   });
   const edgeIds = new Set<string>();
   connections.forEach((edge, index) => {
@@ -103,7 +167,16 @@ export function parseDocument(input: unknown): FlowDocument {
     if (typeof edge.to !== 'string' || !ids.has(edge.to))
       issues.push(`${at}.to refers to a missing node.`);
     if (edge.from === edge.to) issues.push(`${at}: self connections are not supported yet.`);
-    if (!nonempty(edge.label)) issues.push(`${at}.label is required.`);
+    if (edge.label !== undefined && typeof edge.label !== 'string')
+      issues.push(`${at}.label must be a string.`);
+    if (
+      edge.labelPosition !== undefined &&
+      (typeof edge.labelPosition !== 'number' ||
+        !Number.isFinite(edge.labelPosition) ||
+        edge.labelPosition < 0 ||
+        edge.labelPosition > 1)
+    )
+      issues.push(`${at}.labelPosition must be between 0 and 1.`);
     if (edge.color !== undefined && (typeof edge.color !== 'string' || !color.test(edge.color)))
       issues.push(`${at}.color must be a #RGB or #RRGGBB color.`);
     if (
@@ -134,12 +207,28 @@ export function parseDocument(input: unknown): FlowDocument {
       controls: appearance.controls !== false,
       buttonText: appearance.buttonText !== false,
     },
-    nodes: nodes.map((node) => ({ id: node.id, label: node.label })),
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      label: node.label,
+      ...(node.group === undefined ? {} : { group: node.group }),
+      ...(node.shape === undefined ? {} : { shape: node.shape }),
+    })),
+    ...(groups.length
+      ? {
+          groups: groups.map((group) => ({
+            id: group.id,
+            label: group.label,
+            ...(group.parent === undefined ? {} : { parent: group.parent }),
+            ...(group.layout === undefined ? {} : { layout: group.layout }),
+          })),
+        }
+      : {}),
     connections: connections.map((edge) => ({
       id: edge.id,
       from: edge.from,
       to: edge.to,
-      label: edge.label,
+      label: edge.label ?? '',
+      ...(edge.labelPosition === undefined ? {} : { labelPosition: edge.labelPosition }),
       color: edge.color ?? '#70a0ff',
       shape: edge.shape ?? 'circle',
       duration: edge.duration ?? 4,
@@ -168,19 +257,32 @@ export function toMarkup(input: FlowDocument): string {
   ].join('');
   // Place outgoing connections after their source. Only omit endpoints when both
   // match the surrounding nodes; explicit names keep branches and reverse edges clear.
-  const content = doc.nodes.flatMap((node, index) => [
-    `  <flow-node name="${e(node.id)}">${e(node.label)}</flow-node>`,
-    ...doc.connections
-      .filter((edge) => edge.from === node.id)
-      .map((edge) => {
-        const endpoints =
-          edge.to === doc.nodes[index + 1]?.id ? '' : ` from="${e(edge.from)}" to="${e(edge.to)}"`;
-        return `  <flow-connection name="${e(edge.id)}"${endpoints} label="${e(edge.label)}" color="${edge.color}" shape="${edge.shape}" duration="${edge.duration}"></flow-connection>`;
-      }),
-  ]);
+  const render = (parent?: string, depth = 1): string[] => {
+    const indent = '  '.repeat(depth);
+    const peers = doc.nodes.filter((node) => node.group === parent);
+    return [
+      ...(doc.groups ?? [])
+        .filter((group) => group.parent === parent)
+        .flatMap((group) => [
+          `${indent}<flow-group name="${e(group.id)}" label="${e(group.label)}"${group.layout ? ` layout="${group.layout}"` : ''}>`,
+          ...render(group.id, depth + 1),
+          `${indent}</flow-group>`,
+        ]),
+      ...peers.flatMap((node, index) => [
+        `${indent}<flow-node name="${e(node.id)}"${node.shape ? ` shape="${node.shape}"` : ''}>${e(node.label)}</flow-node>`,
+        ...doc.connections
+          .filter((edge) => edge.from === node.id)
+          .map((edge) => {
+            const endpoints =
+              edge.to === peers[index + 1]?.id ? '' : ` from="${e(edge.from)}" to="${e(edge.to)}"`;
+            return `${indent}<flow-connection name="${e(edge.id)}"${endpoints} label="${e(edge.label!)}"${edge.labelPosition === undefined ? '' : ` label-position="${edge.labelPosition}"`} color="${edge.color}" shape="${edge.shape}" duration="${edge.duration}"></flow-connection>`;
+          }),
+      ]),
+    ];
+  };
   return [
     `<flow-diagram label="${e(doc.label)}" layout="${doc.layout}"${doc.autoplay ? ' autoplay' : ''}${attrs}>`,
-    ...content,
+    ...render(),
     '</flow-diagram>',
   ].join('\n');
 }
