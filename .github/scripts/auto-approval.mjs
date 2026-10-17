@@ -91,24 +91,59 @@ function latestReviews(reviews) {
   return [...latest.values()];
 }
 
-export function reviewedAndGreen(head, reviews, graph) {
+function trustedCodex(user) {
+  return (
+    user.id === CODEX_ID && user.type === 'Bot' && user.login === 'chatgpt-codex-connector[bot]'
+  );
+}
+
+function codeSummary(head, comments) {
+  const summaries = comments.filter(
+    (comment) =>
+      trustedCodex(comment.user) &&
+      comment.body.startsWith('<!-- codex-pull-request-review-summary -->'),
+  );
+  if (!summaries.length) return { present: false, clean: false };
+  if (summaries.length !== 1) return { present: true, clean: false };
+  if ((summaries[0].body.match(/codex-review-state:/g) ?? []).length !== 1) {
+    return { present: true, clean: false };
+  }
+  const states = [...summaries[0].body.matchAll(/^<!-- codex-review-state:v1 (.+) -->$/gm)];
+  let state;
+  try {
+    if (states.length === 1) state = JSON.parse(states[0][1]).code_review;
+  } catch {
+    // Unknown or malformed provider state is not evidence of a completed review.
+  }
+  return {
+    present: true,
+    clean:
+      state?.commit_sha === head &&
+      state.status === 'completed' &&
+      state.has_any_findings === false &&
+      state.has_unresolved_findings === false,
+  };
+}
+
+export function reviewedAndGreen(head, reviews, graph, comments = []) {
   if (graph.reviewDecision === 'CHANGES_REQUESTED') return false;
   if (graph.headRefOid !== head || graph.reviewThreads.pageInfo.hasNextPage) return false;
   if (graph.reviewThreads.nodes.some((thread) => !thread.isResolved)) return false;
   const latest = latestReviews(reviews);
+  const summary = codeSummary(head, comments);
+  if (summary.present && !summary.clean) return false;
   const opinions = latestReviews(reviews.filter((review) => review.state !== 'COMMENTED'));
   if (opinions.some((review) => review.state === 'CHANGES_REQUESTED')) return false;
   const cleanReview = latest.some(
     (review) =>
-      review.user.id === CODEX_ID &&
-      review.user.type === 'Bot' &&
-      review.user.login === 'chatgpt-codex-connector[bot]' &&
+      trustedCodex(review.user) &&
       review.commit_id === head &&
       (review.state === 'APPROVED' ||
         (review.state === 'COMMENTED' && review.body.split('\n').includes(REVIEW_MARKER))),
   );
   const rollup = graph.commits.nodes[0]?.commit;
-  if (!cleanReview || rollup?.oid !== head || !rollup.statusCheckRollup) return false;
+  if ((!cleanReview && !summary.clean) || rollup?.oid !== head || !rollup.statusCheckRollup)
+    return false;
   const checks = rollup.statusCheckRollup;
   if (checks.state !== 'SUCCESS' || checks.contexts.pageInfo.hasNextPage) return false;
   return checks.contexts.nodes.some(
@@ -140,6 +175,11 @@ export async function reconcile({ github, context, core }, number) {
   if (pr.state !== 'open') return;
   const graph = (await github.graphql(QUERY, { ...repo, number })).repository.pullRequest;
   const reviews = await github.paginate(github.rest.pulls.listReviews, { ...key, per_page: 100 });
+  const comments = await github.paginate(github.rest.issues.listComments, {
+    ...repo,
+    issue_number: number,
+    per_page: 100,
+  });
   const ownedReviews = reviews.filter(
     (review) =>
       review.user.login === BOT &&
@@ -172,7 +212,7 @@ export async function reconcile({ github, context, core }, number) {
     !isTrivial(pr, files) ||
     graph.autoMergeRequest ||
     graph.baseRefOid !== pr.base.sha ||
-    !reviewedAndGreen(pr.head.sha, reviews, graph)
+    !reviewedAndGreen(pr.head.sha, reviews, graph, comments)
   ) {
     await withdraw();
     core.info(

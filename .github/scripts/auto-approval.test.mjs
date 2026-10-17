@@ -198,6 +198,7 @@ function mock({ race, mergeError, readError, labelError, merged = true } = {}) {
       }),
     },
     issues: {
+      listComments: async () => [],
       getLabel: async () => {},
       addLabels: async () => {
         calls.push(['label']);
@@ -309,4 +310,54 @@ test('a later comment by the shared Actions bot does not hide an approval from c
   reviews.push({ id: 3, user, state: 'COMMENTED', body: 'Another workflow comment' });
   await reconcile(deps, 15);
   assert.deepEqual(calls, [['dismiss', 2]]);
+});
+
+test('the trusted provider summary binds clean completion to the current head', () => {
+  const state = {
+    code_review: {
+      commit_sha: 'head',
+      status: 'completed',
+      has_any_findings: false,
+      has_unresolved_findings: false,
+    },
+    security_review: { commit_sha: null, status: null },
+  };
+  const summary = (value, user = review.user) => ({
+    id: 7,
+    user,
+    body: `<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 ${JSON.stringify(value)} -->`,
+  });
+  assert.equal(reviewedAndGreen('head', [], graph, [summary(state)]), true);
+  for (const patch of [
+    { commit_sha: 'old' },
+    { status: 'running' },
+    { status: 'failed' },
+    { has_any_findings: true },
+    { has_any_findings: null },
+    { has_unresolved_findings: true },
+    { has_unresolved_findings: undefined },
+  ]) {
+    const comment = summary({ ...state, code_review: { ...state.code_review, ...patch } });
+    assert.equal(reviewedAndGreen('head', [review], graph, [comment]), false);
+  }
+  assert.equal(
+    reviewedAndGreen('head', [], graph, [summary(state, { ...review.user, id: 99 })]),
+    false,
+  );
+  assert.equal(reviewedAndGreen('head', [], graph, [summary(state), summary(state)]), false);
+  const malformed = summary(state);
+  malformed.body =
+    '<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 invalid-json -->';
+  assert.equal(reviewedAndGreen('head', [review], graph, [malformed]), false);
+  const unknown = summary(state);
+  unknown.body = unknown.body.replace('state:v1', 'state:v2');
+  assert.equal(reviewedAndGreen('head', [review], graph, [unknown]), false);
+  for (const extra of [
+    '\n<!-- codex-review-state:v2 {"code_review":{"status":"running"}} -->',
+    '\n<!-- codex-review-state:v1 {\n"code_review":{"status":"running"}} -->',
+  ]) {
+    const mixed = summary(state);
+    mixed.body += extra;
+    assert.equal(reviewedAndGreen('head', [review], graph, [mixed]), false);
+  }
 });

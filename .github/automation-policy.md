@@ -12,7 +12,9 @@
 
 ## 必要な根拠
 
-現在のheadに対するCodex GitHub Appの独立レビューが必要。GitHub上のBot IDも照合し、正式なAPPROVED、またはレビュー本文の独立した行に`<!-- somen-code-review:pass -->`があるCOMMENTEDだけを受け付ける。リアクション、一般コメント、以前のheadへのレビュー、レビューの失敗・省略は受け付けない。指摘があるレビューには完了マーカーを付けない。AGENTS.mdのレビュー規約を参照する。
+現在のheadに対するCodex GitHub Appの独立レビューが必要。GitHub上のBot IDも照合し、正式なAPPROVED、またはレビュー本文の独立した行に`<!-- somen-code-review:pass -->`があるCOMMENTEDを根拠とする。リアクション、一般コメント、以前のheadへのレビュー、レビューの失敗・省略は受け付けない。指摘があるレビューには完了マーカーを付けない。AGENTS.mdのレビュー規約を参照する。
+
+Codexが正式レビューを残さず完了する場合は、同じ信頼済みBotの機械用summaryも確認する。実際のPRで確認した`codex-review-state:v1`について、現在のcommit_sha・statusがcompleted・両findingsがfalseの全条件を満たす場合だけ受け付ける。取得した最新本文を使い、runningへの更新、古いhead、欠落・null・未知の形式・複数のsummaryは待機させる。通常のコメントやthumbだけを根拠にはしない。
 
 未解決のレビュー会話や変更要求がある場合、チェック・会話の取得が途中で切れた場合は停止する。GitHub Actionsの`Checks`成功と、headに対するチェック全体の成功が揃ったら、workflowがそのコミットを正式に承認し、同じheadを指定して[GitHub標準のsquash merge API](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)を実行する。既存の必須レビュー・最新CI・会話解決などのブランチ保護は維持する。
 
