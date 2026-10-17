@@ -155,6 +155,32 @@ test('grouped HTML exports the same graph and respects reduced motion', async ({
   expect(same).toBe(true);
 });
 
+test('node attribute labels remain visible and yield to HTML content', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/packages/core/test/browser/fixtures/grouped.html');
+  const diagram = page.locator('#decision');
+  const node = diagram.locator('flow-node[name=freeze]');
+  await node.evaluate((element) => {
+    element.setAttribute('label', 'UIが固まるか');
+    element.textContent = ' \n ';
+  });
+  await expect(node.getByText('UIが固まるか', { exact: true })).toBeVisible();
+  const exported = await diagram.evaluate((element) => (element as FlowDiagramElement).toJSON());
+  expect(exported.nodes.find((item) => item.id === 'freeze')?.label).toBe('UIが固まるか');
+  await node.evaluate((element) => element.setAttribute('label', '処理中にUIが固まるか'));
+  await expect(node.getByText('処理中にUIが固まるか', { exact: true })).toBeVisible();
+  const screenshot = testInfo.outputPath('node-label-fallback.png');
+  await diagram.screenshot({ path: screenshot });
+  await testInfo.attach('node-label-fallback', { path: screenshot, contentType: 'image/png' });
+  await node.evaluate((element) => {
+    element.firstChild!.nodeValue = 'HTMLの内容';
+  });
+  await expect(node).toContainText('HTMLの内容');
+  await expect(node.locator('slot')).not.toHaveAttribute('hidden', '');
+  await expect(node.getByText('処理中にUIが固まるか', { exact: true })).toBeHidden();
+});
+
 test('connection labels handle whitespace-only HTML and later text edits', async ({ page }) => {
   await page.goto('/packages/core/test/browser/fixtures/grouped.html');
   const edge = page.locator('#decision flow-connection').first();

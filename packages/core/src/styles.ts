@@ -46,6 +46,7 @@ const itemStyles = `
 slot { display:contents; }
 `;
 export const nodeStyles = `${itemStyles}
+[hidden] { display:none; }
 :host { display:grid; inline-size:100%; max-inline-size:var(--flow-node-width,11.5rem); min-block-size:var(--flow-node-height,3.5rem); color:var(--flow-node-text,inherit); font-size:.875rem; line-height:1.35; overflow-wrap:anywhere; }
 .surface { position:relative; display:grid; align-items:center; padding:.625rem .75rem; border:1px solid var(--flow-node-border,#fff); border-radius:var(--flow-node-radius,4px); background:var(--flow-node-background,#000); }
 svg { display:none; position:absolute; inset:0; inline-size:100%; block-size:100%; overflow:visible; pointer-events:none; }

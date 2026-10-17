@@ -7,14 +7,35 @@ export function defineContentElements(registry: CustomElementRegistry): void {
     template.innerHTML = `<style>${nodeStyles}</style>
       <div class="surface" part="surface">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><polygon part="shape" points="50,1 99,50 50,99 1,50" /></svg>
-        <div class="content" part="content"><slot></slot></div>
+        <div class="content" part="content"><slot></slot><span data-fallback></span></div>
       </div>`;
     registry.define(
       'flow-node',
       class extends HTMLElement {
+        static observedAttributes = ['label'];
+        private mutations?: MutationObserver;
         constructor() {
           super();
           this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
+          this.shadowRoot!.addEventListener('slotchange', () => this.updateLabel());
+        }
+        connectedCallback() {
+          this.updateLabel();
+          this.mutations = new MutationObserver(() => this.updateLabel());
+          this.mutations.observe(this, { childList: true, characterData: true, subtree: true });
+        }
+        disconnectedCallback() {
+          this.mutations?.disconnect();
+        }
+        attributeChangedCallback() {
+          this.updateLabel();
+        }
+        private updateLabel() {
+          const hasContent = !!this.textContent?.trim() || this.children.length > 0;
+          this.shadowRoot!.querySelector('slot')!.hidden = !hasContent;
+          const fallback = this.shadowRoot!.querySelector<HTMLElement>('[data-fallback]')!;
+          fallback.textContent = this.getAttribute('label') ?? '';
+          fallback.hidden = hasContent;
         }
       },
     );
