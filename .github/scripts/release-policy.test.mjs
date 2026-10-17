@@ -8,6 +8,7 @@ import {
 } from './release-policy.mjs';
 import { automaticReleaseEvent, prepareRelease, successfulChecks } from './prepare-release.mjs';
 import { labelRelease } from './label-release.mjs';
+import { preparePublication } from './prepare-publication.mjs';
 
 const manifest = {
   name: 'somenflow',
@@ -286,4 +287,45 @@ test('explicit user security impact can release a development-tool fix', async (
 test('missing/failed checks or main advancing cannot prepare publication', async () => {
   await assert.rejects(planFixture({ checksForRelease: [] }), /CI and CodeQL must succeed/);
   assert.deepEqual(await planFixture({ advanceMain: true }), { ready: 'false' });
+});
+
+function publicationFixture({ draft = false, mismatch = false, existingTag = false } = {}) {
+  const writes = [];
+  const sha = context.payload.workflow_run.head_sha;
+  const github = {
+    paginate: async () => (draft ? [{ tag_name: 'v0.1.0-alpha.5', draft: true }] : []),
+    rest: {
+      repos: { listReleases() {} },
+      git: {
+        getRef: async ({ ref }) => {
+          if (ref === 'heads/main')
+            return { data: { object: { sha: mismatch ? 'b'.repeat(40) : sha } } };
+          if (existingTag) return { data: { object: { type: 'tag', sha: 'c'.repeat(40) } } };
+          throw Object.assign(new Error('Not Found'), { status: 404 });
+        },
+        getTag: async () => ({ data: { object: { type: 'commit', sha } } }),
+        createRef: async (args) => writes.push(args),
+      },
+    },
+  };
+  return { github, repo: context.repo, sha, tag: 'v0.1.0-alpha.5', automatic: true, writes };
+}
+
+test('draft release and superseded main stop before any publication-side writes', async () => {
+  for (const options of [{ draft: true }, { mismatch: true }]) {
+    const fixture = publicationFixture(options);
+    await assert.rejects(preparePublication(fixture), /draft release|Main advanced/);
+    assert.deepEqual(fixture.writes, []);
+  }
+});
+
+test('publication creates a new tag only after preflight; annotated-tag retries are read-only', async () => {
+  const fixture = publicationFixture();
+  await preparePublication(fixture);
+  assert.equal(fixture.writes.length, 1);
+  assert.equal(fixture.writes[0].sha, fixture.sha);
+  assert.equal(fixture.writes[0].ref, 'refs/tags/v0.1.0-alpha.5');
+  const retry = publicationFixture({ existingTag: true });
+  await preparePublication(retry);
+  assert.deepEqual(retry.writes, []);
 });

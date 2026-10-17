@@ -103,30 +103,12 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
-            if (process.env.RELEASE_AUTOMATIC === 'true') {
-              const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
-              if (main.object.sha !== process.env.RELEASE_SHA) throw new Error('Main advanced; wait for its CI before publishing.');
-            }
-            try {
-              const { data: release } = await github.rest.repos.getReleaseByTag({ ...context.repo, tag: process.env.RELEASE_TAG });
-              if (release.draft) throw new Error('A draft release already exists; review it before publishing.');
-            } catch (error) {
-              if (error.status !== 404) throw error;
-            }
-            const ref = `tags/${process.env.RELEASE_TAG}`;
-            let existing;
-            try {
-              existing = (await github.rest.git.getRef({ ...context.repo, ref })).data;
-            } catch (error) {
-              if (error.status !== 404) throw error;
-            }
-            if (existing) {
-              const { execFileSync } = await import('node:child_process');
-              const sha = execFileSync('git', ['rev-parse', `refs/${ref}^{commit}`], { encoding: 'utf8' }).trim();
-              if (sha !== process.env.RELEASE_SHA) throw new Error('Existing tag points to a different commit.');
-            } else {
-              await github.rest.git.createRef({ ...context.repo, ref: `refs/${ref}`, sha: process.env.RELEASE_SHA });
-            }
+            const { preparePublication } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/prepare-publication.mjs`);
+            await preparePublication({
+              github, repo: context.repo,
+              sha: process.env.RELEASE_SHA, tag: process.env.RELEASE_TAG,
+              automatic: process.env.RELEASE_AUTOMATIC === 'true',
+            });
       - name: Publish to npm
         if: steps.registry.outputs.published == 'false'
         working-directory: packages/core
