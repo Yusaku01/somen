@@ -185,6 +185,77 @@ test('grouped exports preserve nested peers between ordinary nodes', async ({ pa
   expect(exported.edge).toMatchObject({ id: 'ac', from: 'a', to: 'c' });
 });
 
+test('single-column vertical flows shrink without losing paused paths', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/packages/core/test/browser/fixtures/paused-resize.html');
+  const diagram = page.locator('flow-diagram');
+  const state = await diagram.evaluateHandle((element) => {
+    const flow = element as FlowDiagramElement;
+    flow.pause();
+    const svg = flow.shadowRoot!.querySelector('svg')!;
+    svg.setCurrentTime(1);
+    return { svg, path: svg.querySelector('path[part=rail]')! };
+  });
+  for (const nested of [false, true]) {
+    if (nested)
+      await diagram.evaluate((element) => {
+        const group = document.createElement('flow-group');
+        group.setAttribute('name', 'group');
+        group.setAttribute('label', 'Group');
+        group.append(...element.children);
+        element.append(group);
+      });
+    for (const width of [180, 800]) {
+      await diagram.evaluate((element, size) => {
+        element.style.width = `${size}px`;
+      }, width);
+      await expect(diagram.locator('.stage')).toHaveAttribute(
+        'data-layout',
+        width === 180 ? 'vertical' : 'horizontal',
+      );
+      await expect
+        .poll(() =>
+          diagram.evaluate((element) => {
+            const view = element.shadowRoot!.querySelector<HTMLElement>('.viewport')!;
+            return view.scrollWidth <= view.clientWidth + 1;
+          }),
+        )
+        .toBe(true);
+      await expect(diagram.locator('.hint')).toBeHidden();
+      await expect
+        .poll(() =>
+          diagram.evaluate((element) => {
+            const view = element.shadowRoot!.querySelector('.viewport')!.getBoundingClientRect();
+            return [...element.querySelectorAll('flow-node')].every((node) => {
+              const box = node.getBoundingClientRect();
+              return box.left >= view.left && box.right <= view.right;
+            });
+          }),
+        )
+        .toBe(true);
+      if (!nested)
+        expect(
+          await state.evaluate(
+            ({ svg, path }) =>
+              svg.isConnected &&
+              path.isConnected &&
+              svg.animationsPaused() &&
+              Math.abs(svg.getCurrentTime() - 1) < 0.01,
+          ),
+        ).toBe(true);
+      if (width === 180) {
+        const screenshot = testInfo.outputPath(`narrow-linear-${nested ? 'grouped' : 'plain'}.png`);
+        await diagram.screenshot({ path: screenshot });
+        await testInfo.attach(`narrow-linear-${nested}`, {
+          path: screenshot,
+          contentType: 'image/png',
+        });
+      }
+    }
+  }
+});
+
 test('node attribute labels remain visible and yield to HTML content', async ({
   page,
 }, testInfo) => {

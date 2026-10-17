@@ -536,7 +536,12 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
     }
 
     /** Contract groups into items, then measure and place each container recursively. */
-    private arrange(container: HTMLElement, inheritedVertical: boolean, apply: boolean): number {
+    private arrange(
+      container: HTMLElement,
+      inheritedVertical: boolean,
+      apply: boolean,
+      allowShrink = true,
+    ): number {
       const vertical =
         container === this
           ? inheritedVertical
@@ -582,15 +587,18 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
       const gap = Math.max(parseFloat(style.columnGap) || 56, vertical ? 0 : labelGap);
       const rowGap = Math.max(parseFloat(style.rowGap) || 56, vertical ? labelGap : 0);
       const padding = parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
+      const cross = Math.max(1, ...layers.map((layer) => layer.length));
+      const shrink = allowShrink && vertical && cross === 1;
       const widths = new Map(
         items.map((item) => [
           item.getAttribute('name')!,
           item.localName === 'flow-group'
-            ? this.arrange(item, vertical, apply)
-            : parseFloat(getComputedStyle(item).maxInlineSize) || 184,
+            ? this.arrange(item, vertical, apply, shrink)
+            : shrink
+              ? parseFloat(getComputedStyle(item).minInlineSize) || 0
+              : parseFloat(getComputedStyle(item).maxInlineSize) || 184,
         ]),
       );
-      const cross = Math.max(1, ...layers.map((layer) => layer.length));
       const columns = Array.from({ length: vertical ? cross : layers.length }, () => 0);
       layers.forEach((layer, rank) =>
         layer.forEach((id, index) => {
