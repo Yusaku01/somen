@@ -1,0 +1,16 @@
+changelog:
+  exclude:
+    labels:
+      - release:internal
+      - release:skip
+  categories:
+    - title: Breaking changes
+      labels: ['release:breaking']
+    - title: Security
+      labels: ['release:security']
+    - title: Features
+      labels: ['release:feature']
+    - title: Fixes
+      labels: ['release:fix']
+    - title: Other changes
+      labels: ['*']
