@@ -1,6 +1,7 @@
 import { parseDocument, type FlowDocument } from './model.js';
-import { connectionPath, type Box } from './layout.js';
+import { connectionPath, rankItems, type Box } from './layout.js';
 import { styles } from './styles.js';
+import { defineContentElements } from './content-elements.js';
 
 export interface FlowDiagramElement extends HTMLElement {
   readonly paused: boolean;
@@ -25,6 +26,9 @@ interface Rail {
   lane: number;
   path: SVGPathElement;
   motions: SVGAnimateMotionElement[];
+  label: HTMLElement;
+  labelPosition: number;
+  labelLane: number;
 }
 
 /** Call in a browser, or import /register. Safe to import on an SSR server. */
@@ -32,6 +36,7 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
   if (typeof HTMLElement === 'undefined') return;
   registry ??= customElements;
   if (registry.get('flow-diagram')) return;
+  defineContentElements(registry);
 
   class Diagram extends HTMLElement implements FlowDiagramElement {
     static observedAttributes = [
@@ -60,6 +65,9 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
     private model: FlowDocument | undefined;
     private nodes = new Map<string, HTMLElement>();
     private rails: Rail[] = [];
+    private groups = new Map<string, HTMLElement>();
+    private directions = new Map<Element, boolean>();
+    private ranks = new Map<Element, number>();
     private resize?: ResizeObserver;
     private mutations?: MutationObserver;
     private media?: MediaQueryList;
@@ -67,6 +75,7 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
     private pendingSync = false;
     private initialized = false;
     private requestedPlaying = false;
+    private overflowed = false;
     private uid = `svg-flow-${++sequence}`;
 
     constructor() {
@@ -84,7 +93,7 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
             <svg aria-hidden="true" focusable="false"></svg>
             <div class="nodes" part="nodes"><slot></slot></div>
           </div></div>
-          <p class="hint" hidden>↔</p>
+          <p class="hint" id="scroll-hint" part="scroll-hint" hidden><slot name="scroll-hint">↔ Scroll to see the full diagram</slot></p>
           <ul class="sr-only" data-summary></ul>
         </figure>`;
       const q = <T extends Element>(selector: string) => this.root.querySelector<T>(selector)!;
@@ -115,13 +124,34 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
       this.media.addEventListener('change', this.onMotionPreference);
       document.addEventListener('visibilitychange', this.onVisibility);
       this.resize = new ResizeObserver(() => this.queueLayout());
-      this.mutations = new MutationObserver(() => this.queueSync());
+      this.mutations = new MutationObserver((records) => {
+        if (
+          records.some(
+            (record) =>
+              record.type !== 'attributes' || !['style', 'class'].includes(record.attributeName!),
+          )
+        )
+          this.queueSync();
+        else this.queueLayout();
+      });
       this.mutations.observe(this, {
         subtree: true,
         childList: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['name', 'from', 'to', 'label', 'color', 'shape', 'duration'],
+        attributeFilter: [
+          'name',
+          'from',
+          'to',
+          'label',
+          'color',
+          'shape',
+          'duration',
+          'layout',
+          'label-position',
+          'style',
+          'class',
+        ],
       });
       this.queueSync();
     }
@@ -180,14 +210,23 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
     }
 
     private readDocument(): FlowDocument {
-      const children = [...this.children];
+      const collect = (parent: Element): Element[] =>
+        [...parent.children].flatMap((child) =>
+          child.localName === 'flow-group'
+            ? [child, ...collect(child)]
+            : ['flow-node', 'flow-connection'].includes(child.localName)
+              ? [child]
+              : [],
+        );
+      const children = collect(this);
+      const groups = children.filter((child) => child.localName === 'flow-group');
       const nodes = children.filter((child) => child.localName === 'flow-node');
       const connections = children.filter((child) => child.localName === 'flow-connection');
       const endpoint = (edge: Element, side: 'from' | 'to') => {
         if (edge.hasAttribute(side)) return edge.getAttribute(side);
-        const index = children.indexOf(edge);
-        const siblings =
-          side === 'from' ? children.slice(0, index).reverse() : children.slice(index + 1);
+        const peers = [...edge.parentElement!.children];
+        const index = peers.indexOf(edge);
+        const siblings = side === 'from' ? peers.slice(0, index).reverse() : peers.slice(index + 1);
         return siblings.find((child) => child.localName === 'flow-node')?.getAttribute('name');
       };
       return parseDocument({
@@ -205,15 +244,29 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           controls: this.getAttribute('controls') !== 'hidden',
           buttonText: this.getAttribute('button-text') !== 'hidden',
         },
+        groups: groups.map((group) => ({
+          id: group.getAttribute('name'),
+          label:
+            group.getAttribute('label') ??
+            group.querySelector(':scope > [slot=label]')?.textContent?.trim(),
+          parent:
+            group.parentElement === this ? undefined : group.parentElement?.getAttribute('name'),
+          layout: group.getAttribute('layout') ?? undefined,
+        })),
         nodes: nodes.map((node) => ({
           id: node.getAttribute('name'),
-          label: node.textContent?.trim(),
+          label: node.getAttribute('label') ?? node.textContent?.trim(),
+          group: node.parentElement === this ? undefined : node.parentElement?.getAttribute('name'),
+          shape: node.getAttribute('shape') ?? undefined,
         })),
         connections: connections.map((edge, i) => ({
           id: edge.getAttribute('name') ?? `connection-${i + 1}`,
           from: endpoint(edge, 'from'),
           to: endpoint(edge, 'to'),
-          label: edge.getAttribute('label'),
+          label: edge.getAttribute('label') ?? edge.textContent?.trim() ?? '',
+          labelPosition: edge.hasAttribute('label-position')
+            ? Number(edge.getAttribute('label-position'))
+            : undefined,
           color: edge.getAttribute('color') ?? undefined,
           shape: edge.getAttribute('shape') ?? undefined,
           duration: edge.hasAttribute('duration')
@@ -228,6 +281,9 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         this.model = this.readDocument();
       } catch (error) {
         this.model = undefined;
+        this.stage.hidden = true;
+        this.view.tabIndex = -1;
+        this.hint.hidden = true;
         this.error.textContent = error instanceof Error ? error.message : String(error);
         this.error.hidden = false;
         this.control.hidden = true;
@@ -241,16 +297,25 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         return;
       }
       this.error.hidden = true;
+      this.stage.hidden = false;
+      this.ranks.clear();
+      this.directions.clear();
       this.caption.textContent = this.model.label;
       this.nodes = new Map(
-        [...this.children]
-          .filter((child) => child.localName === 'flow-node')
+        [...this.querySelectorAll('flow-node')]
+          .filter((node) => node.closest('flow-diagram') === this)
           .map((node) => [node.getAttribute('name')!, node as HTMLElement]),
+      );
+      this.groups = new Map(
+        [...this.querySelectorAll<HTMLElement>('flow-group')]
+          .filter((group) => group.closest('flow-diagram') === this)
+          .map((group) => [group.getAttribute('name')!, group]),
       );
       this.resize?.disconnect();
       this.resize?.observe(this);
       this.resize?.observe(this.stage);
       this.nodes.forEach((node) => this.resize?.observe(node));
+      this.groups.forEach((group) => this.resize?.observe(group));
       const clock = this.svg.getCurrentTime();
       this.svg.replaceChildren();
       this.rails = [];
@@ -264,7 +329,10 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         const pair = [edge.from, edge.to].sort().join('|');
         pairs.set(pair, [...(pairs.get(pair) ?? []), edge.id]);
       });
-      this.model.connections.forEach((edge) => {
+      const connections = [...this.querySelectorAll<HTMLElement>('flow-connection')].filter(
+        (edge) => edge.closest('flow-diagram') === this,
+      );
+      this.model.connections.forEach((edge, index) => {
         const markerId = `${this.uid}-${edge.id}`;
         const marker = svgElement('marker', {
           id: markerId,
@@ -314,6 +382,11 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           motions.push(motion);
         }
         const siblings = pairs.get([edge.from, edge.to].sort().join('|'))!;
+        this.setStyle(
+          connections[index]!,
+          '--_flow-label-width',
+          `calc((100% - ${(siblings.length - 1) * 8}px) / ${siblings.length})`,
+        );
         this.rails.push({
           from: edge.from,
           to: edge.to,
@@ -323,6 +396,9 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           ),
           path,
           motions,
+          label: connections[index]!,
+          labelPosition: edge.labelPosition ?? 0.5,
+          labelLane: siblings.indexOf(edge.id) - (siblings.length - 1) / 2,
         });
         const item = document.createElement('li');
         item.setAttribute('part', 'legend-item');
@@ -330,15 +406,15 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         mark.setAttribute('part', 'legend-mark');
         const label = document.createElement('span');
         label.setAttribute('part', 'legend-label');
-        label.textContent = edge.label;
+        label.textContent = edge.label ?? '';
         mark.className = 'mark';
         mark.dataset.shape = edge.shape;
         mark.style.backgroundColor = edge.color!;
         mark.setAttribute('aria-hidden', 'true');
         item.append(mark, label);
-        this.legend.append(item);
+        if (edge.label) this.legend.append(item);
         const summary = document.createElement('li');
-        summary.textContent = `${this.model!.nodes.find((node) => node.id === edge.from)!.label} → ${this.model!.nodes.find((node) => node.id === edge.to)!.label}: ${edge.label}`;
+        summary.textContent = `${this.model!.nodes.find((node) => node.id === edge.from)!.label} → ${this.model!.nodes.find((node) => node.id === edge.to)!.label}${edge.label ? `: ${edge.label}` : ''}`;
         this.summary.append(summary);
       });
       this.svg.setCurrentTime(clock);
@@ -357,24 +433,13 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
 
     private layout() {
       if (!this.model || !this.isConnected) return;
-      const nodeStyle = getComputedStyle(this.root.querySelector('.nodes')!);
-      const gap = parseFloat(nodeStyle.columnGap) || 56;
-      const padding =
-        parseFloat(nodeStyle.paddingInlineStart) + parseFloat(nodeStyle.paddingInlineEnd);
-      const nodeWidths = [...this.nodes.values()].map((node) => {
-        const maxWidth = getComputedStyle(node).maxInlineSize;
-        return maxWidth.endsWith('px') ? Number.parseFloat(maxWidth) : 184;
-      });
-      const needed =
-        nodeWidths.reduce((sum, width) => sum + width, 0) +
-        Math.max(0, this.nodes.size - 1) * gap +
-        padding;
+      const horizontalWidth = this.arrange(this, false, false);
       const vertical =
         this.model.layout === 'vertical' ||
-        (this.model.layout === 'auto' && this.clientWidth < needed);
+        (this.model.layout === 'auto' && this.view.clientWidth < horizontalWidth);
       this.stage.dataset.layout = vertical ? 'vertical' : 'horizontal';
-      // Explicit horizontal diagrams scroll, while automatic diagrams reflow to one column.
-      this.stage.style.minWidth = this.model.layout === 'horizontal' ? `${needed}px` : '';
+      const needed = this.arrange(this, vertical, true);
+      this.setStyle(this.stage, 'min-width', `${needed}px`);
       const rect = this.stage.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
       this.svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
@@ -386,16 +451,25 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           y: box.top - rect.top,
           width: box.width,
           height: box.height,
+          shape: node.getAttribute('shape') === 'decision' ? 'decision' : 'rect',
         });
       });
       let changed = false;
       this.rails.forEach((rail) => {
-        const order = [...this.nodes.keys()];
-        const detour = Math.abs(order.indexOf(rail.from) - order.indexOf(rail.to)) > 1;
+        const from = this.nodes.get(rail.from)!;
+        const to = this.nodes.get(rail.to)!;
+        let container = from.parentElement!;
+        while (container !== this && !container.contains(to)) container = container.parentElement!;
+        const direction = this.directions.get(container) ?? vertical;
+        const peer = (node: Element) => {
+          while (node.parentElement !== container) node = node.parentElement!;
+          return node;
+        };
+        const detour = Math.abs(this.ranks.get(peer(from))! - this.ranks.get(peer(to))!) > 1;
         const d = connectionPath(
           boxes.get(rail.from)!,
           boxes.get(rail.to)!,
-          vertical,
+          direction,
           rail.lane,
           detour,
         );
@@ -404,14 +478,181 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           rail.path.setAttribute('d', d);
           rail.motions.forEach((motion) => motion.setAttribute('path', d));
         }
+        const point = rail.path.getPointAtLength(rail.path.getTotalLength() * rail.labelPosition);
+        // Labels need more room than the rails: keep paired directions readable
+        // without moving the connection anchors outside their nodes.
+        const peers = this.rails.filter(
+          (candidate) =>
+            (candidate.from === rail.from && candidate.to === rail.to) ||
+            (candidate.from === rail.to && candidate.to === rail.from),
+        );
+        const labelSize = Math.max(
+          ...peers.map((candidate) => {
+            const box = candidate.label.getBoundingClientRect();
+            return direction ? box.width : box.height;
+          }),
+        );
+        const labelOffset = rail.labelLane * (labelSize + 8) - rail.lane;
+        this.setStyle(rail.label, '--_flow-label-x', direction ? `${labelOffset}px` : '0px');
+        this.setStyle(rail.label, '--_flow-label-y', direction ? '0px' : `${labelOffset}px`);
+        // offsetParent skips shadow ancestors in some browsers. Measure the actual
+        // containing-block origin instead, excluding the label's CSS translation.
+        const labelRect = rail.label.getBoundingClientRect();
+        const transform = new DOMMatrixReadOnly(getComputedStyle(rail.label).transform);
+        const left =
+          (parseFloat(rail.label.style.left) || 0) +
+          point.x +
+          rect.left -
+          labelRect.left +
+          transform.e;
+        const top =
+          (parseFloat(rail.label.style.top) || 0) +
+          point.y +
+          rect.top -
+          labelRect.top +
+          transform.f;
+        this.setStyle(rail.label, 'left', `${Math.round(left * 64) / 64}px`);
+        this.setStyle(rail.label, 'top', `${Math.round(top * 64) / 64}px`);
       });
       // SMIL can retain a cached transform when its path changes while paused.
       // Sample the same time again rather than restarting the animation.
       if (changed) this.svg.setCurrentTime(this.svg.getCurrentTime());
       this.svg.setAttribute('data-ready', '');
       const overflowing = this.view.scrollWidth > this.view.clientWidth + 1;
+      // Start a newly overflowing flow at its central question rather than clipping
+      // that question at the right edge. Subsequent layouts preserve the reader's scroll.
+      if (overflowing && !this.overflowed)
+        this.view.scrollLeft = (this.view.scrollWidth - this.view.clientWidth) / 2;
+      this.overflowed = overflowing;
       this.view.tabIndex = overflowing ? 0 : -1;
+      this.view.setAttribute('aria-label', this.model.label);
+      if (overflowing) {
+        this.view.setAttribute('role', 'region');
+        this.view.setAttribute('aria-describedby', 'scroll-hint');
+      } else {
+        this.view.removeAttribute('role');
+        this.view.removeAttribute('aria-describedby');
+      }
       this.hint.hidden = !overflowing;
+    }
+
+    private setStyle(element: HTMLElement, name: string, value: string) {
+      if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
+    }
+
+    /** Contract groups into items, then measure and place each container recursively. */
+    private arrange(
+      container: HTMLElement,
+      inheritedVertical: boolean,
+      apply: boolean,
+      allowShrink = true,
+    ): number {
+      const vertical =
+        container === this
+          ? inheritedVertical
+          : container.getAttribute('layout') === 'vertical'
+            ? true
+            : container.getAttribute('layout') === 'horizontal'
+              ? false
+              : inheritedVertical;
+      const grid =
+        container === this
+          ? this.root.querySelector<HTMLElement>('.nodes')!
+          : container.shadowRoot!.querySelector<HTMLElement>('.items')!;
+      const items = [...container.children].filter((child) =>
+        ['flow-node', 'flow-group'].includes(child.localName),
+      ) as HTMLElement[];
+      const ids = items.map((item) => item.getAttribute('name')!);
+      const project = (id: string) => {
+        let item: Element = this.nodes.get(id)!;
+        while (item.parentElement && item.parentElement !== container) item = item.parentElement;
+        return item.parentElement === container ? item.getAttribute('name')! : '';
+      };
+      const edges = this.model!.connections.map((edge) => ({
+        from: project(edge.from),
+        to: project(edge.to),
+      })).filter((edge) => edge.from && edge.to && edge.from !== edge.to);
+      const layers = edges.length ? rankItems(ids, edges) : ids.map((id) => [id]);
+      this.setStyle(grid, '--_flow-label-column-gap', '0px');
+      this.setStyle(grid, '--_flow-label-row-gap', '0px');
+      const style = getComputedStyle(grid);
+      const labelGap = Math.max(
+        0,
+        ...this.rails
+          .filter((rail) => {
+            const from = project(rail.from),
+              to = project(rail.to);
+            return from && to && from !== to;
+          })
+          .map((rail) => {
+            const box = rail.label.getBoundingClientRect();
+            return (vertical ? box.height : box.width) + 16;
+          }),
+      );
+      const gap = Math.max(parseFloat(style.columnGap) || 56, vertical ? 0 : labelGap);
+      const rowGap = Math.max(parseFloat(style.rowGap) || 56, vertical ? labelGap : 0);
+      const padding = parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
+      const cross = Math.max(1, ...layers.map((layer) => layer.length));
+      const shrink = allowShrink && vertical && cross === 1;
+      const widths = new Map(
+        items.map((item) => [
+          item.getAttribute('name')!,
+          item.localName === 'flow-group'
+            ? this.arrange(item, vertical, apply, shrink)
+            : shrink
+              ? parseFloat(getComputedStyle(item).minInlineSize) || 0
+              : parseFloat(getComputedStyle(item).maxInlineSize) || 184,
+        ]),
+      );
+      const columns = Array.from({ length: vertical ? cross : layers.length }, () => 0);
+      layers.forEach((layer, rank) =>
+        layer.forEach((id, index) => {
+          const start = Math.floor((index * cross) / layer.length);
+          const span = Math.floor(((index + 1) * cross) / layer.length) - start;
+          if (vertical) {
+            for (let col = start; col < start + span; col++)
+              columns[col] = Math.max(columns[col]!, (widths.get(id)! - gap * (span - 1)) / span);
+          } else columns[rank] = Math.max(columns[rank]!, widths.get(id)!);
+          if (apply) {
+            const item = items.find((candidate) => candidate.getAttribute('name') === id)!;
+            this.ranks.set(item, rank);
+            this.setStyle(
+              item,
+              '--_flow-column',
+              vertical ? `${start + 1} / span ${span}` : `${rank + 1}`,
+            );
+            this.setStyle(
+              item,
+              '--_flow-row',
+              vertical ? `${rank + 1}` : `${start + 1} / span ${span}`,
+            );
+          }
+        }),
+      );
+      if (apply) {
+        this.directions.set(container, vertical);
+        this.setStyle(grid, '--_flow-label-column-gap', `${gap}px`);
+        this.setStyle(grid, '--_flow-label-row-gap', `${rowGap}px`);
+        this.setStyle(
+          grid,
+          'grid-template-columns',
+          columns.map((width) => `minmax(${width}px,1fr)`).join(' '),
+        );
+        this.setStyle(
+          grid,
+          'grid-template-rows',
+          `repeat(${vertical ? layers.length : cross},auto)`,
+        );
+      }
+      const border = getComputedStyle(container);
+      return (
+        columns.reduce((sum, width) => sum + width, 0) +
+        Math.max(0, columns.length - 1) * gap +
+        padding +
+        (container === this
+          ? 0
+          : parseFloat(border.borderLeftWidth) + parseFloat(border.borderRightWidth))
+      );
     }
 
     private slotText(slot: HTMLSlotElement) {
@@ -442,7 +683,7 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         captionHidden && this.control.hidden;
       (this.root.querySelector('.legend') as HTMLElement).hidden =
         this.getAttribute('legend') === 'hidden' ||
-        (!this.rails.length && !this.querySelector('[slot=legend]'));
+        (!this.legend.children.length && !this.querySelector('[slot=legend]'));
       (this.root.querySelector('[data-button-text]') as HTMLElement).hidden =
         this.getAttribute('button-text') === 'hidden';
     }
@@ -467,9 +708,6 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
       );
     }
   }
-  if (!registry.get('flow-node')) registry.define('flow-node', class extends HTMLElement {});
-  if (!registry.get('flow-connection'))
-    registry.define('flow-connection', class extends HTMLElement {});
   registry.define('flow-diagram', Diagram);
 }
 

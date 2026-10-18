@@ -4,7 +4,7 @@
 
 ## HTML attributes
 
-Nodes and connections must be direct children of `flow-diagram`. Each diagram needs a nonempty `label` or text in its `caption` slot. Each node needs a unique `name` and nonempty text content; each connection needs a nonempty `label`.
+Place nodes, groups, and connections directly inside `flow-diagram` or `flow-group`. Each diagram needs a nonempty `label` or text in its `caption` slot. Each node needs a unique `name` and nonempty text content or a `label`. Connection labels are optional.
 
 | Element | Attribute | Purpose |
 | --- | --- | --- |
@@ -14,16 +14,39 @@ Nodes and connections must be direct children of `flow-diagram`. Each diagram ne
 | | `variant="plain"` | Remove the panel background and border. |
 | | `caption="hidden"`, `legend="hidden"`, `controls="hidden"`, `button-text="hidden"` | Hide each visible part independently. |
 | `flow-node` | `name` | Identify a node for connections. |
+| | `shape="rect\|decision"` | Use a rectangular node (default) or a diamond for a decision. |
+| | `label` | Optionally supply a plain-text description instead of extracting the HTML content. |
+| `flow-group` | `name`, `label` | Identify and name an enclosing group; the `label` slot accepts HTML instead. |
+| | `layout="auto\|horizontal\|vertical"` | Inherit the diagram direction by default, or choose a direction for this group. |
 | `flow-connection` | `from`, `to` | Name the endpoints when their positions in HTML are insufficient. |
-| | `label` | Describe the connection in the legend and text summary. |
+| | `label` | Describe the connection on its line, in the legend, and in the text summary. HTML body content replaces the visible label; without the attribute its text also becomes the description. |
+| | `label-position` | Position the label along the path, from `0` to `1`; default `0.5`. |
 | | `name` | Optionally identify a connection with a unique name. |
 | | `color`, `shape`, `duration` | Set particle color, shape (`circle`, `square`, `diamond`), and traversal time in seconds. |
 
-An omitted `from` or `to` uses the nearest node on that side of the connection. A missing node produces a validation error. Self connections are not supported. `duration` accepts 0.5–120 seconds and defaults to `4`; `color` accepts `#RGB` or `#RRGGBB` and defaults to `#70a0ff`. The default particle shape is `circle`. Node and connection names start with an ASCII letter and use only letters, numbers, `_`, or `-`.
+An omitted `from` or `to` uses the nearest sibling node on that side of the connection. Connections crossing group boundaries need explicit endpoints. A missing node produces a validation error. Self connections are not supported. `duration` accepts 0.5–120 seconds and defaults to `4`; `color` accepts `#RGB` or `#RRGGBB` and defaults to `#70a0ff`. The default particle shape is `circle`. Node, group, and connection names start with an ASCII letter and use only letters, numbers, `_`, or `-`.
+
+## Groups and decisions
+
+```html
+<flow-diagram label="Choose a route" layout="vertical" legend="hidden">
+  <flow-group name="check" label="Validation">
+    <flow-node name="ready" shape="decision">Ready?</flow-node>
+  </flow-group>
+  <flow-node name="proceed">Continue</flow-node>
+  <flow-node name="retry">Try again</flow-node>
+  <flow-connection from="ready" to="proceed" label="Yes"></flow-connection>
+  <flow-connection from="ready" to="retry" label="No"></flow-connection>
+</flow-diagram>
+```
+
+Connections determine layers; items on a layer keep their relative source order. Cyclic components use source order internally. Groups are laid out recursively as containers. A linear flow keeps the short node / connection / node syntax, and an unlabeled connection needs no attributes.
+
+In `auto` layout, the diagram uses a horizontal direction when its preferred widths fit, then switches to vertical when space is limited. Branches remain side by side. If they still need more width, the diagram scrolls horizontally and its viewport becomes a named, keyboard-focusable region. A newly overflowing diagram starts centered to keep its opening question visible; subsequent layouts preserve the reader's scroll. The `scroll-hint` slot localizes the scrolling instruction. Explicit `horizontal` and `vertical` layouts retain their direction. This layout targets small graphs; complex crossings and overlap avoidance remain limited.
 
 ## Appearance and playback
 
-The default appearance uses a black dotted canvas, outlined nodes, white connection lines, and color on the moving particles. The legend sits above the canvas. Slots named `caption`, `legend`, `play-label`, and `pause-label` replace the corresponding default content. CSS custom properties control colors, sizes, spacing, and corners. Shadow parts expose individual elements for styling.
+The default appearance uses a black dotted canvas, outlined nodes, white connection lines, and color on the moving particles. The legend sits above the canvas. Slots named `caption`, `legend`, `play-label`, `pause-label`, and `scroll-hint` replace the corresponding default content. CSS custom properties control colors, sizes, spacing, and corners. Shadow parts expose individual elements for styling.
 
 ```css
 flow-diagram {
@@ -48,11 +71,25 @@ CSS custom properties are grouped by the part they affect:
 | Panel | `--flow-background`, `--flow-text`, `--flow-border`, `--flow-radius` |
 | Canvas | `--flow-stage-background`, `--flow-grid`, `--flow-gap`, `--flow-padding` |
 | Nodes | `--flow-node-background`, `--flow-node-text`, `--flow-node-border`, `--flow-node-radius`, `--flow-node-width`, `--flow-node-height` |
+| Decisions | `--flow-decision-height` |
+| Groups | `--flow-group-border`, `--flow-group-background`, `--flow-group-radius`, `--flow-group-label-color`, `--flow-group-label-size`, `--flow-group-padding` |
 | Connections | `--flow-rail`, `--flow-rail-width` |
+| Connection labels | `--flow-label-color`, `--flow-label-background`, `--flow-label-border`, `--flow-label-radius`, `--flow-label-size`, `--flow-label-width`, `--flow-label-offset-x`, `--flow-label-offset-y` |
 | Caption and toolbar | `--flow-toolbar`, `--flow-caption-color`, `--flow-caption-size`, `--flow-caption-weight` |
 | Playback control | `--flow-control-background`, `--flow-control-color`, `--flow-control-border`, `--flow-control-hover`, `--flow-control-radius`, `--flow-control-size` |
 | Legend | `--flow-legend-background`, `--flow-legend-color`, `--flow-legend-border`, `--flow-legend-size`, `--flow-mark-border` |
 | Focus and errors | `--flow-focus`, `--flow-error` |
+
+Use `flow-node::part(surface)` for the node surface, `::part(content)` for its HTML wrapper, and `::part(shape)` for the decision polygon. Groups expose `surface`, `label`, and `content`; connections expose `label`. Properties set on an individual group or node override inherited diagram properties. Consumer classes and attributes can express application-specific states without a new state enum.
+
+```css
+flow-group { --flow-group-background: #0f172a; }
+flow-group::part(label) { font-weight: 700; }
+flow-node[data-state="selected"] { --flow-node-border: #9ae8c5; }
+flow-connection::part(label) { font-weight: 600; }
+```
+
+The auto-layout assigns grid positions through private CSS variables. Consumers can override `grid-column` / `grid-row` on nodes and groups, or style a group's `content` part. The consumer then owns the resulting spacing and crossings; these overrides are not serialized into JSON. Label offset properties accept lengths and allow small visual adjustments without changing the path.
 
 Call `play()` and `pause()` on a `flow-diagram` element to control it from JavaScript. Hiding the built-in control does not pause playback, so provide another pause control if the diagram moves without it. The read-only `paused` property and `flow-playback` event's `detail.paused` report the requested playback state. The `flow-error` event exposes the validation error in `detail`. Both events bubble and cross shadow boundaries.
 
@@ -74,7 +111,7 @@ The CLI and the JavaScript API share the `FlowDocument` format. Save the followi
 }
 ```
 
-`version`, `label`, `nodes`, and `connections` are required. Node IDs and connection IDs must each be unique within their own list, start with an ASCII letter, and contain only letters, numbers, `_`, or `-`. Projects accept 1–100 nodes and at most 300 connections. JSON connections require explicit `from` and `to` values.
+`version`, `label`, `nodes`, and `connections` are required. Node IDs and connection IDs must each be unique within their own list, start with an ASCII letter, and contain only letters, numbers, `_`, or `-`. Projects accept 1–100 nodes, at most 100 groups, and at most 300 connections. Group IDs are unique and must differ from node IDs. A group needs an `id` and nonempty `label`; optional `parent` names its enclosing group. Each group must contain a node or group, and parent cycles are rejected. JSON connections require explicit `from` and `to` values.
 
 | Optional field | Default | Values |
 | --- | --- | --- |
@@ -82,6 +119,11 @@ The CLI and the JavaScript API share the `FlowDocument` format. Save the followi
 | `autoplay` | `false` | Boolean |
 | `appearance.variant` | `"panel"` | `"panel"`, `"plain"` |
 | `appearance.caption`, `appearance.legend`, `appearance.controls`, `appearance.buttonText` | `true` | Boolean; `false` hides the corresponding part |
+| `groups` | Absent | Array of `{ id, label, parent?, layout? }` |
+| Node `group` | Absent | Enclosing group ID |
+| Node `shape` | `"rect"` | `"rect"`, `"decision"` |
+| Connection `label` | `""` | Optional text |
+| Connection `labelPosition` | `0.5` | Number from 0 to 1 |
 | Connection `color` | `"#70a0ff"` | `#RGB` or `#RRGGBB` |
 | Connection `shape` | `"circle"` | `"circle"`, `"square"`, `"diamond"` |
 | Connection `duration` | `4` | Number of seconds, from 0.5 to 120 |
@@ -99,10 +141,10 @@ const markup = toMarkup(document);
 
 `jsonText` is the content of a JSON project such as the example above. `parseDocument()` validates it and fills in defaults. Invalid input throws `FlowValidationError`, whose `issues` property lists the validation messages. `toMarkup()` returns custom-element HTML with escaped labels and attributes; register `somenflow/register` in the browser to render it.
 
-Call `toJSON()` on a registered `flow-diagram` element to obtain its project data. Node content becomes text labels; slots and rich HTML content are not preserved in JSON.
+Call `toJSON()` on a registered `flow-diagram` element to obtain its project data. Group membership, decision shapes, and connection label positions are preserved. Node, group-title, and connection content becomes text labels; slots, CSS overrides, and rich HTML content are not preserved in JSON. HTML export orders peer groups by their first descendant node and keeps each group's descendants together. Interleaved members of the same group become contiguous. Connections may be reordered while retaining their IDs and endpoints.
 
 ## Accessibility
 
-Authored node content remains HTML. The connection SVG is hidden from assistive technology, while the caption and a text summary describe the diagram's connections. Hiding the caption preserves the diagram's accessible name. Playback controls support keyboard operation.
+Authored node and label content remains HTML. Groups are named sections. The connection SVG is hidden from assistive technology, while the caption and a text summary describe the diagram's connections. Hiding the caption preserves the diagram's accessible name. Playback controls support keyboard operation.
 
 Motion starts only with `autoplay`. A reduced-motion preference prevents initial playback; visitors can still start playback explicitly. Hidden tabs temporarily suspend animation without changing the requested playback state.
