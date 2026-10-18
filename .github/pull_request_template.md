@@ -1,9 +1,9 @@
 # Pull request
 
-## Summary
+## 目的
 
-Describe the change and why it is needed.
+<!-- 利用者の課題と、変更後に何が作れる・簡単になるかを簡潔に。diffの列挙は省く。 -->
 
-## Verification
+## 確認
 
-List the checks you ran. Include screenshots for visible changes.
+<!-- 実行済みの検証結果。UI変更には広幅・狭幅の画像と表示確認の結果を添える。未実施は区別する。 -->
