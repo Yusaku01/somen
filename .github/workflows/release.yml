@@ -44,7 +44,7 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         id: plan
         with:
           script: |
@@ -100,7 +100,7 @@ jobs:
           appendFileSync(process.env.GITHUB_OUTPUT, `published=${response.ok}\n`);
           NODE
       - name: Verify release state and create tag
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { preparePublication } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/prepare-publication.mjs`);
