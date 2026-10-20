@@ -28,7 +28,6 @@ interface Rail {
   motions: SVGAnimateMotionElement[];
   label: HTMLElement;
   labelPosition: number;
-  labelLane: number;
 }
 
 /** Call in a browser, or import /register. Safe to import on an SSR server. */
@@ -382,11 +381,6 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           motions.push(motion);
         }
         const siblings = pairs.get([edge.from, edge.to].sort().join('|'))!;
-        this.setStyle(
-          connections[index]!,
-          '--_flow-label-width',
-          `calc((100% - ${(siblings.length - 1) * 8}px) / ${siblings.length})`,
-        );
         this.rails.push({
           from: edge.from,
           to: edge.to,
@@ -398,7 +392,6 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
           motions,
           label: connections[index]!,
           labelPosition: edge.labelPosition ?? 0.5,
-          labelLane: siblings.indexOf(edge.id) - (siblings.length - 1) / 2,
         });
         const item = document.createElement('li');
         item.setAttribute('part', 'legend-item');
@@ -481,18 +474,20 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         const point = rail.path.getPointAtLength(rail.path.getTotalLength() * rail.labelPosition);
         // Labels need more room than the rails: keep paired directions readable
         // without moving the connection anchors outside their nodes.
-        const peers = this.rails.filter(
-          (candidate) =>
-            (candidate.from === rail.from && candidate.to === rail.to) ||
-            (candidate.from === rail.to && candidate.to === rail.from),
-        );
+        const peers = this.labelPeers(rail);
         const labelSize = Math.max(
+          0,
           ...peers.map((candidate) => {
             const box = candidate.label.getBoundingClientRect();
             return direction ? box.width : box.height;
           }),
         );
-        const labelOffset = rail.labelLane * (labelSize + 8) - rail.lane;
+        const labelLane = peers.indexOf(rail) - (peers.length - 1) / 2;
+        const labelSpan = peers.length * (labelSize + 8) - 8;
+        const labelOffset =
+          labelLane * (labelSize + 8) +
+          (detour ? (direction ? -rail.lane / 3 : rail.lane / 3) : -rail.lane) -
+          (detour && !direction && peers.length > 1 ? labelSpan / 2 + 8 : 0);
         this.setStyle(rail.label, '--_flow-label-x', direction ? `${labelOffset}px` : '0px');
         this.setStyle(rail.label, '--_flow-label-y', direction ? '0px' : `${labelOffset}px`);
         // offsetParent skips shadow ancestors in some browsers. Measure the actual
@@ -519,10 +514,10 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
       if (changed) this.svg.setCurrentTime(this.svg.getCurrentTime());
       this.svg.setAttribute('data-ready', '');
       const overflowing = this.view.scrollWidth > this.view.clientWidth + 1;
-      // Start a newly overflowing flow at its central question rather than clipping
-      // that question at the right edge. Subsequent layouts preserve the reader's scroll.
+      // Vertical branches open at their central question; horizontal flows open
+      // at the leading edge. Subsequent layouts preserve the reader's scroll.
       if (overflowing && !this.overflowed)
-        this.view.scrollLeft = (this.view.scrollWidth - this.view.clientWidth) / 2;
+        this.view.scrollLeft = vertical ? (this.view.scrollWidth - this.view.clientWidth) / 2 : 0;
       this.overflowed = overflowing;
       this.view.tabIndex = overflowing ? 0 : -1;
       this.view.setAttribute('aria-label', this.model.label);
@@ -538,6 +533,15 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
 
     private setStyle(element: HTMLElement, name: string, value: string) {
       if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
+    }
+
+    private labelPeers(rail: Rail) {
+      return this.rails.filter(
+        (candidate) =>
+          ((candidate.from === rail.from && candidate.to === rail.to) ||
+            (candidate.from === rail.to && candidate.to === rail.from)) &&
+          candidate.label.getBoundingClientRect().height > 0,
+      );
     }
 
     /** Contract groups into items, then measure and place each container recursively. */
@@ -573,24 +577,47 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         to: project(edge.to),
       })).filter((edge) => edge.from && edge.to && edge.from !== edge.to);
       const layers = edges.length ? rankItems(ids, edges) : ids.map((id) => [id]);
+      const rails = this.rails.filter((rail) => {
+        const from = project(rail.from),
+          to = project(rail.to);
+        return from && to && from !== to;
+      });
+      rails.forEach((rail) => {
+        const count = Math.max(1, this.labelPeers(rail).length);
+        this.setStyle(
+          rail.label,
+          '--_flow-label-width',
+          vertical ? `calc((100% - ${(count - 1) * 8}px) / ${count})` : '100%',
+        );
+      });
       this.setStyle(grid, '--_flow-label-column-gap', '0px');
       this.setStyle(grid, '--_flow-label-row-gap', '0px');
+      this.setStyle(grid, 'padding-top', '');
       const style = getComputedStyle(grid);
       const labelGap = Math.max(
         0,
-        ...this.rails
-          .filter((rail) => {
-            const from = project(rail.from),
-              to = project(rail.to);
-            return from && to && from !== to;
-          })
-          .map((rail) => {
-            const box = rail.label.getBoundingClientRect();
-            return (vertical ? box.height : box.width) + 16;
-          }),
+        ...rails.map((rail) => {
+          const box = rail.label.getBoundingClientRect();
+          return (vertical ? box.height : box.width) + 16;
+        }),
       );
+      // Labels fan out farther than the bounded rail lanes. Reserve their full
+      // stack in every cross-axis track and between neighboring branches.
+      const labelSpan = vertical
+        ? 0
+        : Math.max(
+            0,
+            ...rails.map((rail) => {
+              const peers = this.labelPeers(rail);
+              if (peers.length < 2) return 0;
+              const height = Math.max(
+                ...peers.map((peer) => peer.label.getBoundingClientRect().height),
+              );
+              return peers.length * (height + 8) - 8;
+            }),
+          );
       const gap = Math.max(parseFloat(style.columnGap) || 56, vertical ? 0 : labelGap);
-      const rowGap = Math.max(parseFloat(style.rowGap) || 56, vertical ? labelGap : 0);
+      const rowGap = Math.max(parseFloat(style.rowGap) || 56, vertical ? labelGap : labelSpan);
       const padding = parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
       const cross = Math.max(1, ...layers.map((layer) => layer.length));
       const shrink = allowShrink && vertical && cross === 1;
@@ -630,6 +657,22 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         }),
       );
       if (apply) {
+        // Long connections detour above their nodes, outside the row track.
+        const detours =
+          !vertical &&
+          rails.some(
+            (rail) =>
+              Math.abs(
+                layers.findIndex((layer) => layer.includes(project(rail.from))) -
+                  layers.findIndex((layer) => layer.includes(project(rail.to))),
+              ) > 1,
+          );
+        if (detours && labelSpan)
+          this.setStyle(
+            grid,
+            'padding-top',
+            `${Math.max(parseFloat(style.paddingTop), labelSpan + 32)}px`,
+          );
         this.directions.set(container, vertical);
         this.setStyle(grid, '--_flow-label-column-gap', `${gap}px`);
         this.setStyle(grid, '--_flow-label-row-gap', `${rowGap}px`);
@@ -641,7 +684,7 @@ export function defineFlowElements(registry?: CustomElementRegistry): void {
         this.setStyle(
           grid,
           'grid-template-rows',
-          `repeat(${vertical ? layers.length : cross},auto)`,
+          `repeat(${vertical ? layers.length : cross},minmax(${labelSpan}px,auto))`,
         );
       }
       const border = getComputedStyle(container);
