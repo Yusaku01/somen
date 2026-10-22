@@ -4,7 +4,7 @@ Thanks for helping improve Somen. Before starting a large change, open an issue 
 
 ## Local setup
 
-Use Node.js `24.13.0` and pnpm `12.3.4`. The versions are recorded in `.node-version` and `package.json`.
+Use Node.js `24.22.1` and pnpm `12.3.4`. The versions are recorded in `.node-version` and `package.json`.
 
 ```sh
 pnpm install --frozen-lockfile
