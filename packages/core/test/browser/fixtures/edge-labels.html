@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Horizontal starts and parallel labels</title>
+    <script type="module" src="../../../dist/register.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui;
+      }
+      flow-diagram {
+        width: 100%;
+        margin-block-end: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <flow-diagram id="linear" layout="horizontal" label="Start at the first step" legend="hidden">
+      <flow-node name="start">Start</flow-node>
+      <flow-node name="prepare">Prepare</flow-node>
+      <flow-node name="validate">Validate</flow-node>
+      <flow-node name="process">Process</flow-node>
+      <flow-node name="finish">Finish</flow-node>
+      <flow-connection from="start" to="prepare"></flow-connection>
+      <flow-connection from="prepare" to="validate"></flow-connection>
+      <flow-connection from="validate" to="process"></flow-connection>
+      <flow-connection from="process" to="finish"></flow-connection>
+    </flow-diagram>
+    <flow-diagram
+      id="parallel"
+      layout="horizontal"
+      label="Parallel requests and replies"
+      legend="hidden"
+    >
+      <flow-node name="client">Client</flow-node>
+      <flow-node name="server">Server</flow-node>
+    </flow-diagram>
+    <script type="module">
+      const diagram = document.querySelector('#parallel');
+      for (let index = 0; index < 6; index++) {
+        const connection = document.createElement('flow-connection');
+        const reverse = index % 2 === 1;
+        connection.setAttribute('from', reverse ? 'server' : 'client');
+        connection.setAttribute('to', reverse ? 'client' : 'server');
+        connection.setAttribute(
+          'label',
+          `${reverse ? 'Reply' : 'Request'} ${index + 1}: a longer message label`,
+        );
+        diagram.append(connection);
+      }
+    </script>
+  </body>
+</html>
