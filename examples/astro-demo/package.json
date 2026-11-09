@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@astrojs/mdx": "8.1.1",
-    "astro": "7.4.2",
+    "astro": "7.4.5",
     "somenflow": "workspace:*"
   }
 }
